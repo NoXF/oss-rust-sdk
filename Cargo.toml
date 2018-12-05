@@ -1,0 +1,16 @@
+[package]
+name = "oss-rust-sdk"
+version = "0.1.0"
+authors = ["xianyou"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9"
+base64 = "0.10.0"
+chrono = "0.4"
+rust-crypto = "^0.2"
+failure = "0.1.1"
+log = "0.4.6"
+xml-rs = "0.8"
+futures = "0.1"
+tokio = "0.1.11"
