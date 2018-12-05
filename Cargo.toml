@@ -1,8 +1,11 @@
 [package]
 name = "oss-rust-sdk"
 version = "0.1.0"
-authors = ["xianyou"]
+authors = ["XianYou <xianyou.cyq@gmail.com>"]
 edition = "2018"
+readme = "README.md"
+description = "Aliyun OSS SDK"
+license = "Apache-2.0"
 
 [dependencies]
 reqwest = "0.9"
