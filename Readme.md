@@ -55,3 +55,5 @@ You can use `oss_instance.set_bucket("Bucket")` to change bucket if you want cha
 - complete bucket api
 - support async api
 
+## License
+- Apache License 2.0.
