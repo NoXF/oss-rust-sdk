@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use failure::Error;
-use reqwest::header::{HeaderName, HeaderMap};
+use reqwest::header::{HeaderMap, HeaderName};
 use std::collections::HashMap;
 
 #[inline]
