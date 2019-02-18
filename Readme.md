@@ -1,5 +1,15 @@
 # Getting Started
 
+## List Buckets
+```rust
+let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
+let list_buckets = oss_instance.list_bucket(None).unwrap();
+
+let id = list_buckets.id();
+let buckets = list_buckets.buckets();
+let bucket_names: Vec<&str> = buckets.iter().map(|obj| obj.name()).collect();
+```
+
 ## Get Object
 ```rust
 use std::collections::HashMap;
