@@ -1,4 +1,5 @@
 use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
+use quick_xml::{Reader, events::Event};
 use std::collections::HashMap;
 
 use failure::Error;
@@ -10,24 +11,32 @@ use super::utils::*;
 pub trait ObjectAPI {
     fn get_object(
         &self,
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<String, Error>;
+
+    fn get_object_acl(
+        &self,
+        object_name: &str
+    ) -> Result<String, Error>;
+
     fn put_object_from_file(
         &self,
         file: &str,
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error>;
+
     fn put_object_from_buffer(
         &self,
         buf: &[u8],
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error>;
+
     fn copy_object_from_object(
         &self,
         src: &str,
@@ -35,13 +44,14 @@ pub trait ObjectAPI {
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error>;
-    fn delete_object(&self, object: &str) -> Result<(), Error>;
+
+    fn delete_object(&self, object_name: &str) -> Result<(), Error>;
 }
 
 impl ObjectAPI for OSS {
     fn get_object(
         &self,
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<String, Error> {
@@ -50,7 +60,7 @@ impl ObjectAPI for OSS {
         } else {
             String::new()
         };
-        let host = self.host(self.bucket(), object, &resources_str);
+        let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
 
         let mut headers = if let Some(h) = headers {
@@ -64,7 +74,7 @@ impl ObjectAPI for OSS {
             self.key_id(),
             self.key_secret(),
             self.bucket(),
-            object,
+            object_name,
             &resources_str,
             &headers,
         );
@@ -82,10 +92,36 @@ impl ObjectAPI for OSS {
         }
     }
 
+    fn get_object_acl(
+            &self,
+            object_name: &str
+        ) -> Result<String, Error> {
+            let mut params: HashMap<String, Option<String>> = HashMap::new();
+            params.insert("acl".into(), None);
+            let result = self.get_object(object_name, None, Some(params))?;
+            let mut reader = Reader::from_str(&result);
+            reader.trim_text(true);
+            let mut buf = Vec::new();
+            let mut grant = String::new();
+
+            loop {
+                match reader.read_event(&mut buf) {
+                    Ok(Event::Start(ref e)) if e.name() == b"Grant" => {
+                        grant = reader.read_text(e.name(), &mut Vec::new())?;
+                    },
+                    Ok(Event::Eof) => break,
+                    Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                    _ => ()
+                }
+            }
+
+            Ok(grant)
+    }
+
     fn put_object_from_file(
         &self,
         file: &str,
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error> {
@@ -94,7 +130,7 @@ impl ObjectAPI for OSS {
         } else {
             String::new()
         };
-        let host = self.host(self.bucket(), object, &resources_str);
+        let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
         let buf = load_file_to_string(file)?;
         let mut headers = if let Some(h) = headers {
@@ -109,7 +145,7 @@ impl ObjectAPI for OSS {
             self.key_id(),
             self.key_secret(),
             self.bucket(),
-            object,
+            object_name,
             &resources_str,
             &headers,
         );
@@ -130,7 +166,7 @@ impl ObjectAPI for OSS {
     fn put_object_from_buffer(
         &self,
         buf: &[u8],
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error> {
@@ -139,7 +175,7 @@ impl ObjectAPI for OSS {
         } else {
             String::new()
         };
-        let host = self.host(self.bucket(), object, &resources_str);
+        let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
         let mut headers = if let Some(h) = headers {
             to_headers(h)?
@@ -153,7 +189,7 @@ impl ObjectAPI for OSS {
             self.key_id(),
             self.key_secret(),
             self.bucket(),
-            object,
+            object_name,
             &resources_str,
             &headers,
         );
@@ -178,7 +214,7 @@ impl ObjectAPI for OSS {
     fn copy_object_from_object(
         &self,
         src: &str,
-        object: &str,
+        object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
     ) -> Result<(), Error> {
@@ -187,7 +223,7 @@ impl ObjectAPI for OSS {
         } else {
             String::new()
         };
-        let host = self.host(self.bucket(), object, &resources_str);
+        let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
         let mut headers = if let Some(h) = headers {
             to_headers(h)?
@@ -201,7 +237,7 @@ impl ObjectAPI for OSS {
             self.key_id(),
             self.key_secret(),
             self.bucket(),
-            object,
+            object_name,
             &resources_str,
             &headers,
         );
@@ -219,8 +255,8 @@ impl ObjectAPI for OSS {
         }
     }
 
-    fn delete_object(&self, object: &str) -> Result<(), Error> {
-        let host = self.host(self.bucket(), object, "");
+    fn delete_object(&self, object_name: &str) -> Result<(), Error> {
+        let host = self.host(self.bucket(), object_name, "");
         let date = self.date();
 
         let mut headers = HeaderMap::new();
@@ -230,7 +266,7 @@ impl ObjectAPI for OSS {
             self.key_id(),
             self.key_secret(),
             self.bucket(),
-            object,
+            object_name,
             "",
             &headers,
         );
