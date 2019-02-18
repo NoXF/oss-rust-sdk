@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use reqwest::header::{HeaderMap, DATE};
 use failure::Error;
-use quick_xml::{ events::Event, Reader };
+use quick_xml::{Reader, events::Event};
 
 use super::oss::OSS;
 use super::auth::*;
@@ -17,7 +17,14 @@ pub struct Bucket {
 }
 
 impl Bucket {
-    pub fn new(name: String, create_date: String, location: String, extranet_endpoint: String, intranet_endpoint: String, storage_class: String) -> Self {
+    pub fn new(
+        name: String,
+        create_date: String,
+        location: String,
+        extranet_endpoint: String,
+        intranet_endpoint: String,
+        storage_class: String,
+    ) -> Self {
         Bucket {
             name,
             create_date,
@@ -103,41 +110,34 @@ impl ServiceAPI for OSS {
 
         loop {
             match reader.read_event(&mut buf) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name() {
-                        b"Bucket" => {
-                            name = String::new();
-                            location = String::new();
-                            create_date = String::new();
-                            extranet_endpoint = String::new();
-                            intranet_endpoint = String::new();
-                            storage_class = String::new();
-                        },
-                        b"Name" => {
-                            name = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        }
-                        b"CreationDate" => {
-                            create_date = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        },
-                        b"ExtranetEndpoint" => {
-                            extranet_endpoint = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        },
-                        b"IntranetEndpoint" => {
-                            intranet_endpoint = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        },
-                        b"Location" => {
-                            location = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        },
-                        b"StorageClass" => {
-                            storage_class = reader.read_text(e.name(), &mut Vec::new()).unwrap()
-                        }
-                        _ => ()
+                Ok(Event::Start(ref e)) => match e.name() {
+                    b"Bucket" => {
+                        name = String::new();
+                        location = String::new();
+                        create_date = String::new();
+                        extranet_endpoint = String::new();
+                        intranet_endpoint = String::new();
+                        storage_class = String::new();
                     }
+                    b"Name" => name = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"CreationDate" => create_date = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"ExtranetEndpoint" => extranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"IntranetEndpoint" => intranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"Location" => location = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"StorageClass" => storage_class = reader.read_text(e.name(), &mut Vec::new())?,
+                    _ => (),
                 },
                 Ok(Event::End(ref e)) if e.name() == b"Bucket" => {
-                    let bucket = Bucket::new(name.clone(), create_date.clone(), location.clone(), extranet_endpoint.clone(), intranet_endpoint.clone(), storage_class.clone());
+                    let bucket = Bucket::new(
+                        name.clone(),
+                        create_date.clone(),
+                        location.clone(),
+                        extranet_endpoint.clone(),
+                        intranet_endpoint.clone(),
+                        storage_class.clone(),
+                    );
                     result.push(bucket);
-                },
+                }
                 Ok(Event::Eof) => break, // exits the loop when reaching end of file
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
                 _ => (), // There are several other `Event`s we do not consider here
