@@ -14,7 +14,7 @@ pub trait ObjectAPI {
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
-    ) -> Result<String, Error>;
+    ) -> Result<Vec<u8>, Error>;
 
     fn get_object_acl(
         &self,
@@ -54,7 +54,7 @@ impl ObjectAPI for OSS {
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
-    ) -> Result<String, Error> {
+    ) -> Result<Vec<u8>, Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
@@ -81,9 +81,11 @@ impl ObjectAPI for OSS {
         headers.insert("Authorization", authorization.parse()?);
 
         let mut resp = self.client.get(&host).headers(headers).send()?;
+        let mut buf: Vec<u8> = vec![];
 
         if resp.status().is_success() {
-            Ok(resp.text()?)
+            resp.copy_to(&mut buf)?;
+            Ok(buf)
         } else {
             Err(ObjectError::GetError(format!(
                 "can not get object, status code: {}",
@@ -98,7 +100,7 @@ impl ObjectAPI for OSS {
         ) -> Result<String, Error> {
             let mut params: HashMap<String, Option<String>> = HashMap::new();
             params.insert("acl".into(), None);
-            let result = self.get_object(object_name, None, Some(params))?;
+            let result = String::from_utf8(self.get_object(object_name, None, Some(params))?)?;
             let mut reader = Reader::from_str(&result);
             reader.trim_text(true);
             let mut buf = Vec::new();
