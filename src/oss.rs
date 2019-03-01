@@ -1,21 +1,23 @@
 use std::{mem, str};
 use std::collections::HashMap;
+use std::borrow::Cow;
 use chrono::prelude::*;
 use reqwest::Client;
 use reqwest::r#async as async_reqwest;
 use reqwest::header::{HeaderMap, DATE};
 use futures::{Future, Stream};
+pub use reqwest::r#async::Chunk;
 
 use failure::Error;
 use super::auth::*;
 use super::utils::*;
 
 #[derive(Clone, Debug)]
-pub struct OSS {
-    key_id: String,
-    key_secret: String,
-    endpoint: String,
-    bucket: String,
+pub struct OSS<'a> {
+    key_id: Cow<'a, str>,
+    key_secret: Cow<'a, str>,
+    endpoint: Cow<'a, str>,
+    bucket: Cow<'a, str>,
     pub client: Client,
 }
 
@@ -72,13 +74,14 @@ const RESOURCES: [&str; 50] = [
     "callback-var",
 ];
 
-impl OSS {
-    pub fn new(key_id: &str, key_secret: &str, endpoint: &str, bucket: &str) -> Self {
+impl<'a> OSS<'a> {
+    pub fn new<S> (key_id: S, key_secret: S, endpoint: S, bucket: S) -> Self
+        where S: Into<Cow<'a, str>> {
         OSS {
-            key_id: key_id.to_string(),
-            key_secret: key_secret.to_string(),
-            endpoint: endpoint.to_string(),
-            bucket: bucket.to_string(),
+            key_id: key_id.into(),
+            key_secret: key_secret.into(),
+            endpoint: endpoint.into(),
+            bucket: bucket.into(),
             client: Client::new(),
         }
     }
@@ -99,8 +102,8 @@ impl OSS {
         &self.key_secret
     }
 
-    pub fn set_bucket(&mut self, bucket: &str) {
-        self.bucket = bucket.to_string()
+    pub fn set_bucket(&mut self, bucket: &'a str) {
+        self.bucket = bucket.into()
     }
 
     pub fn host(&self, bucket: &str, object: &str, resources_str: &str) -> String {
@@ -154,7 +157,7 @@ impl OSS {
         object: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
-    ) -> impl Future<Item = String, Error = Error> {
+    ) -> impl Future<Item = Chunk, Error = Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
@@ -188,7 +191,6 @@ impl OSS {
                 body.concat2()
             })
             .map_err(|err| err.into())
-            .map(|body| str::from_utf8(&body).unwrap().to_string())
     }
 
     pub fn async_put_object_from_buffer(

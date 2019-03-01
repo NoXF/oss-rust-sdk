@@ -48,7 +48,7 @@ pub trait ObjectAPI {
     fn delete_object(&self, object_name: &str) -> Result<(), Error>;
 }
 
-impl ObjectAPI for OSS {
+impl<'a> ObjectAPI for OSS<'a> {
     fn get_object(
         &self,
         object_name: &str,

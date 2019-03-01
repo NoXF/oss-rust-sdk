@@ -137,7 +137,7 @@ pub trait ServiceAPI {
     ) -> Result<ListBuckets, Error>;
 }
 
-impl ServiceAPI for OSS {
+impl<'a> ServiceAPI for OSS<'a> {
     fn list_bucket(
         &self,
         resources: Option<HashMap<String, Option<String>>>,

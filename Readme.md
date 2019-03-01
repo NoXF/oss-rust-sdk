@@ -2,6 +2,7 @@
 
 ## List Buckets
 ```rust
+use oss_rust_sdk::prelude::*;
 let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
 let list_buckets = oss_instance.list_bucket(None).unwrap();
 
@@ -12,6 +13,7 @@ let bucket_names: Vec<&str> = buckets.iter().map(|obj| obj.name()).collect();
 
 ## Get Object
 ```rust
+use oss_rust_sdk::prelude::*;
 use std::collections::HashMap;
 
 let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
@@ -29,6 +31,7 @@ let buffer = result.unwrap().text();
 
 ## Put Object by file
 ```rust
+use oss_rust_sdk::prelude::*;
 let filename = "filename";
 let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
 let result = oss_instance.put_object_from_file(filename, "object", None, None);
@@ -45,6 +48,7 @@ assert_eq!(result.is_ok(), true)
 
 ## Copy Object
 ```rust
+use oss_rust_sdk::prelude::*;
 let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
 let result = oss_instance.copy_object_from_object("src_object", "dest_object", None, None);
 assert_eq!(result.is_ok(), true)
@@ -52,6 +56,7 @@ assert_eq!(result.is_ok(), true)
 
 ## Delete Ojbect
 ```rust
+use oss_rust_sdk::prelude::*;
 let oss_instance = OSS::new("AccessKeyId", "AccessKeySecret", "Endpoint", "Bucket");
 let result = oss_instance.delete_object("object");
 assert_eq!(result.is_ok(), true)
