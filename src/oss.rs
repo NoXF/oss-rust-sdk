@@ -107,7 +107,7 @@ impl<'a> OSS<'a> {
     }
 
     pub fn host(&self, bucket: &str, object: &str, resources_str: &str) -> String {
-        let host = if self.endpoint.starts_with("https") {
+        if self.endpoint.starts_with("https") {
             format!(
                 "https://{}.{}/{}?{}",
                 bucket,
@@ -123,8 +123,7 @@ impl<'a> OSS<'a> {
                 object,
                 resources_str
             )
-        };
-        host
+        }
     }
 
     pub fn date(&self) -> String {
@@ -140,7 +139,7 @@ impl<'a> OSS<'a> {
         resources.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
         let mut result = String::new();
         for (k, v) in resources {
-            if result.len() > 0 {
+            if !result.is_empty() {
                 result += "&";
             }
             if let Some(vv) = v {
@@ -190,7 +189,7 @@ impl<'a> OSS<'a> {
                 let body = mem::replace(resp.body_mut(), async_reqwest::Decoder::empty());
                 body.concat2()
             })
-            .map_err(|err| err.into())
+            .map_err(Error::from)
     }
 
     pub fn async_put_object_from_buffer(
@@ -231,6 +230,6 @@ impl<'a> OSS<'a> {
             .body(buf.to_owned())
             .send()
             .map(|resp| resp)
-            .map_err(|err| err.into())
+            .map_err(Error::from)
     }
 }

@@ -34,16 +34,16 @@ impl<'a> Auth for OSS<'a> {
     ) -> String {
         let date = headers
             .get(DATE)
-            .and_then(|d| Some(d.to_str().unwrap_or("")))
-            .unwrap_or("");
+            .and_then(|d| Some(d.to_str().unwrap_or_default()))
+            .unwrap_or_default();
         let content_type = headers
             .get(CONTENT_TYPE)
-            .and_then(|c| Some(c.to_str().unwrap_or("")))
-            .unwrap_or("");
+            .and_then(|c| Some(c.to_str().unwrap_or_default()))
+            .unwrap_or_default();
         let content_md5 = headers
             .get("Content-MD5")
-            .and_then(|md5| Some(encode(md5.to_str().unwrap_or(""))))
-            .unwrap_or(String::new());
+            .and_then(|md5| Some(encode(md5.to_str().unwrap_or_default())))
+            .unwrap_or_default();
 
         let mut oss_headers: Vec<(&HeaderName, &HeaderValue)> = headers
             .iter()
