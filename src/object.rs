@@ -2,11 +2,10 @@ use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
 use quick_xml::{Reader, events::Event};
 use std::collections::HashMap;
 
-use failure::Error;
-use super::error::ObjectError;
 use super::oss::OSS;
 use super::auth::*;
 use super::utils::*;
+use super::errors::{Error, ObjectError};
 
 pub trait ObjectAPI {
     fn get_object(
@@ -87,10 +86,7 @@ impl<'a> ObjectAPI for OSS<'a> {
             resp.copy_to(&mut buf)?;
             Ok(buf)
         } else {
-            Err(ObjectError::GetError(format!(
-                "can not get object, status code: {}",
-                resp.status()
-            )).into())
+            Err(Error::Object(ObjectError::GetError{msg: format!("can not get object, status code: {}",resp.status()).into()}))
         }
     }
 
@@ -158,10 +154,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(ObjectError::PutError(format!(
-                "could not put object to oss, status code: {}",
-                resp.status()
-            )).into())
+            Err(Error::Object(ObjectError::PutError{msg: format!("can not put object, status code: {}",resp.status()).into()}))
         }
     }
 
@@ -206,10 +199,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(ObjectError::PutError(format!(
-                "could not put object to oss, status code: {}",
-                resp.status()
-            )).into())
+            Err(Error::Object(ObjectError::PutError{msg: format!("can not put object, status code: {}",resp.status()).into()}))
         }
     }
 
@@ -250,10 +240,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(ObjectError::CopyError(format!(
-                "could not copy object, status code: {}",
-                resp.status()
-            )).into())
+            Err(Error::Object(ObjectError::CopyError{msg: format!("can not copy object, status code: {}",resp.status()).into()}))
         }
     }
 
@@ -279,10 +266,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(ObjectError::DeleteError(format!(
-                "could not delete object, status code: {}",
-                resp.status()
-            )).into())
+            Err(Error::Object(ObjectError::DeleteError{msg: format!("can not delete object, status code: {}",resp.status()).into()}))
         }
     }
 }

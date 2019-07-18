@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
-use failure::Error;
 use reqwest::header::{HeaderMap, HeaderName};
 use std::collections::HashMap;
+use super::errors::Error;
 
 #[inline]
 pub fn load_file_to_string(p: &str) -> Result<String, Error> {

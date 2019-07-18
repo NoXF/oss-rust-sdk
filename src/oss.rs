@@ -8,7 +8,6 @@ use reqwest::header::{HeaderMap, DATE};
 use futures::{Future, Stream};
 pub use reqwest::r#async::Chunk;
 
-use failure::Error;
 use super::auth::*;
 use super::utils::*;
 
@@ -156,7 +155,7 @@ impl<'a> OSS<'a> {
         object: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
-    ) -> impl Future<Item = Chunk, Error = Error> {
+    ) -> impl Future<Item = Chunk, Error = reqwest::Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
@@ -189,7 +188,6 @@ impl<'a> OSS<'a> {
                 let body = mem::replace(resp.body_mut(), async_reqwest::Decoder::empty());
                 body.concat2()
             })
-            .map_err(Error::from)
     }
 
     pub fn async_put_object_from_buffer(
@@ -198,7 +196,7 @@ impl<'a> OSS<'a> {
         object: &str,
         headers: Option<HashMap<&str, &str>>,
         resources: Option<HashMap<String, Option<String>>>,
-    ) -> impl Future<Item = (async_reqwest::Response), Error = Error> {
+    ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
@@ -230,6 +228,5 @@ impl<'a> OSS<'a> {
             .body(buf.to_owned())
             .send()
             .map(|resp| resp)
-            .map_err(Error::from)
     }
 }
