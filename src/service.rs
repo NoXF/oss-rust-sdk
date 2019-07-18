@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use reqwest::header::{HeaderMap, DATE};
-use failure::Error;
 use quick_xml::{Reader, events::Event};
 
 use super::oss::OSS;
 use super::auth::*;
+use super::errors::Error;
 
 #[derive(Clone, Debug)]
 pub struct ListBuckets {
@@ -187,7 +187,7 @@ impl<'a> ServiceAPI for OSS<'a> {
         let mut intranet_endpoint = String::new();
         let mut storage_class = String::new();
 
-        let mut list_buckets;
+        let list_buckets;
 
         loop {
             match reader.read_event(&mut buf) {
