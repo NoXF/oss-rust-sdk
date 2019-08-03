@@ -22,9 +22,9 @@ let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_En
 let mut extra_header = HashMap::new();
 extra_header.insert("content-type", "text/plain");
 // if have oss_sub_resource
-let oss_sub_resource = HashMap::new();
+let mut oss_sub_resource = HashMap::new();
 oss_sub_resource.insert("acl", None);
-oss_sub_resource.insert("response-content-type", Some("ContentType"))
+oss_sub_resource.insert("response-content-type", Some("ContentType"));
 
 let result = oss_instance.get_object("object", Some(extar_header), Some(oss_sub_resource));
 // or you may just get object
