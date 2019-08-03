@@ -29,7 +29,7 @@ oss_sub_resource.insert("response-content-type", Some("ContentType"));
 let result = oss_instance.get_object("object", Some(extar_header), Some(oss_sub_resource));
 // or you may just get object
 // let result = oss_instance.get_object("object", None, None);
-assert_eq!(result.is_ok(), true)
+assert_eq!(result.is_ok(), true);
 let buffer = result.unwrap().text();
 ```
 
