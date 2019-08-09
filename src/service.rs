@@ -133,14 +133,14 @@ impl Bucket {
 pub trait ServiceAPI {
     fn list_bucket(
         &self,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<ListBuckets, Error>;
 }
 
 impl<'a> ServiceAPI for OSS<'a> {
     fn list_bucket(
         &self,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<ListBuckets, Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)

@@ -130,10 +130,10 @@ impl<'a> OSS<'a> {
         now.format("%a, %d %b %Y %T GMT").to_string()
     }
 
-    pub fn get_resources_str(&self, params: HashMap<String, Option<String>>) -> String {
-        let mut resources: Vec<(&String, &Option<String>)> = params
+    pub fn get_resources_str(&self, params: HashMap<&str, Option<&str>>) -> String {
+        let mut resources: Vec<(&&str, &Option<&str>)> = params
             .iter()
-            .filter(|(k, _)| RESOURCES.contains(&k.as_str()))
+            .filter(|(k, _)| RESOURCES.contains(&k))
             .collect();
         resources.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
         let mut result = String::new();
@@ -144,7 +144,7 @@ impl<'a> OSS<'a> {
             if let Some(vv) = v {
                 result += &format!("{}={}", k.to_owned(), vv);
             } else {
-                result += &k;
+                result += k;
             }
         }
         result
@@ -154,7 +154,7 @@ impl<'a> OSS<'a> {
         &self,
         object: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> impl Future<Item = Chunk, Error = reqwest::Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
@@ -195,7 +195,7 @@ impl<'a> OSS<'a> {
         buf: &[u8],
         object: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)

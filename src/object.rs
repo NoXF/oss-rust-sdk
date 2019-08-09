@@ -12,7 +12,7 @@ pub trait ObjectAPI {
         &self,
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<Vec<u8>, Error>;
 
     fn get_object_acl(
@@ -25,7 +25,7 @@ pub trait ObjectAPI {
         file: &str,
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error>;
 
     fn put_object_from_buffer(
@@ -33,7 +33,7 @@ pub trait ObjectAPI {
         buf: &[u8],
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error>;
 
     fn copy_object_from_object(
@@ -41,7 +41,7 @@ pub trait ObjectAPI {
         src: &str,
         dest: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error>;
 
     fn delete_object(&self, object_name: &str) -> Result<(), Error>;
@@ -52,7 +52,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         &self,
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<Vec<u8>, Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
@@ -94,8 +94,8 @@ impl<'a> ObjectAPI for OSS<'a> {
             &self,
             object_name: &str
         ) -> Result<String, Error> {
-            let mut params: HashMap<String, Option<String>> = HashMap::new();
-            params.insert("acl".into(), None);
+            let mut params: HashMap<&str, Option<&str>> = HashMap::new();
+            params.insert("acl", None);
             let result = String::from_utf8(self.get_object(object_name, None, Some(params))?)?;
             let mut reader = Reader::from_str(&result);
             reader.trim_text(true);
@@ -121,7 +121,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         file: &str,
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
@@ -163,7 +163,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         buf: &[u8],
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
@@ -208,7 +208,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         src: &str,
         object_name: &str,
         headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<String, Option<String>>>,
+        resources: Option<HashMap<&str, Option<&str>>>,
     ) -> Result<(), Error> {
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
