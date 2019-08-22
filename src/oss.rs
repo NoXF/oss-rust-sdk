@@ -130,32 +130,35 @@ impl<'a> OSS<'a> {
         now.format("%a, %d %b %Y %T GMT").to_string()
     }
 
-    pub fn get_resources_str(&self, params: HashMap<&str, Option<&str>>) -> String {
-        let mut resources: Vec<(&&str, &Option<&str>)> = params
+    pub fn get_resources_str<S>(&self, params: HashMap<S, Option<S>>) -> String 
+    where S: AsRef<str> {
+        let mut resources: Vec<(&S, &Option<S>)> = params
             .iter()
-            .filter(|(k, _)| RESOURCES.contains(&k))
+            .filter(|(k, _)| RESOURCES.contains(&k.as_ref()))
             .collect();
-        resources.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+        resources.sort_by(|a, b| a.0.as_ref().to_string().cmp(&b.0.as_ref().to_string()));
         let mut result = String::new();
         for (k, v) in resources {
             if !result.is_empty() {
                 result += "&";
             }
             if let Some(vv) = v {
-                result += &format!("{}={}", k.to_owned(), vv);
+                result += &format!("{}={}", k.as_ref().to_owned(), vv.as_ref());
             } else {
-                result += k;
+                result += k.as_ref();
             }
         }
         result
     }
 
-    pub fn async_get_object(
+    pub fn async_get_object<S>(
         &self,
-        object: &str,
-        headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<&str, Option<&str>>>,
-    ) -> impl Future<Item = Chunk, Error = reqwest::Error> {
+        object: S,
+        headers: Option<HashMap<S, S>>,
+        resources: Option<HashMap<S, Option<S>>>,
+    ) -> impl Future<Item = Chunk, Error = reqwest::Error> 
+    where S: AsRef<str> {
+        let object = object.as_ref();
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
@@ -190,13 +193,15 @@ impl<'a> OSS<'a> {
             })
     }
 
-    pub fn async_put_object_from_buffer(
+    pub fn async_put_object_from_buffer<S>(
         &self,
         buf: &[u8],
-        object: &str,
-        headers: Option<HashMap<&str, &str>>,
-        resources: Option<HashMap<&str, Option<&str>>>,
-    ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> {
+        object: S,
+        headers: Option<HashMap<S, S>>,
+        resources: Option<HashMap<S, Option<S>>>,
+    ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> 
+    where S: AsRef<str> {
+        let object = object.as_ref();
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
         } else {
