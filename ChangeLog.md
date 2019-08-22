@@ -1,3 +1,5 @@
+* 0.1.10
+	* more elegant api for str or String parameters
 * 0.1.8
 	* not use failure anymore
 * 0.1.7
