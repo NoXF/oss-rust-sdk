@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use quick_xml::{events::Event, Reader};
 use reqwest::header::{HeaderMap, DATE};
-use quick_xml::{Reader, events::Event};
+use std::collections::HashMap;
 
-use super::oss::OSS;
 use super::auth::*;
 use super::errors::Error;
+use super::oss::OSS;
 
 #[derive(Clone, Debug)]
 pub struct ListBuckets {
@@ -17,7 +17,7 @@ pub struct ListBuckets {
     id: String,
     display_name: String,
 
-    buckets: Vec<Bucket>
+    buckets: Vec<Bucket>,
 }
 
 impl ListBuckets {
@@ -29,7 +29,7 @@ impl ListBuckets {
         next_marker: String,
         id: String,
         display_name: String,
-        buckets: Vec<Bucket>
+        buckets: Vec<Bucket>,
     ) -> Self {
         ListBuckets {
             prefix,
@@ -39,7 +39,7 @@ impl ListBuckets {
             next_marker,
             id,
             display_name,
-            buckets
+            buckets,
         }
     }
 
@@ -131,18 +131,19 @@ impl Bucket {
 }
 
 pub trait ServiceAPI {
-    fn list_bucket(
-        &self,
-        resources: Option<HashMap<&str, Option<&str>>>,
-    ) -> Result<ListBuckets, Error>;
+    fn list_bucket<S, R>(&self, resources: R) -> Result<ListBuckets, Error>
+    where
+        S: AsRef<str>,
+        R: Into<Option<HashMap<S, Option<S>>>>;
 }
 
 impl<'a> ServiceAPI for OSS<'a> {
-    fn list_bucket(
-        &self,
-        resources: Option<HashMap<&str, Option<&str>>>,
-    ) -> Result<ListBuckets, Error> {
-        let resources_str = if let Some(r) = resources {
+    fn list_bucket<S, R>(&self, resources: R) -> Result<ListBuckets, Error>
+    where
+        S: AsRef<str>,
+        R: Into<Option<HashMap<S, Option<S>>>>,
+    {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
@@ -179,7 +180,6 @@ impl<'a> ServiceAPI for OSS<'a> {
         let mut id = String::new();
         let mut display_name = String::new();
 
-
         let mut name = String::new();
         let mut location = String::new();
         let mut create_date = String::new();
@@ -195,7 +195,9 @@ impl<'a> ServiceAPI for OSS<'a> {
                     b"Prefix" => prefix = reader.read_text(e.name(), &mut Vec::new())?,
                     b"Marker" => marker = reader.read_text(e.name(), &mut Vec::new())?,
                     b"MaxKeys" => max_keys = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"IsTruncated" => is_truncated = reader.read_text(e.name(), &mut Vec::new())? == "true",
+                    b"IsTruncated" => {
+                        is_truncated = reader.read_text(e.name(), &mut Vec::new())? == "true"
+                    }
                     b"NextMarker" => next_marker = reader.read_text(e.name(), &mut Vec::new())?,
                     b"ID" => id = reader.read_text(e.name(), &mut Vec::new())?,
                     b"DisplayName" => display_name = reader.read_text(e.name(), &mut Vec::new())?,
@@ -207,14 +209,20 @@ impl<'a> ServiceAPI for OSS<'a> {
                         extranet_endpoint = String::new();
                         intranet_endpoint = String::new();
                         storage_class = String::new();
-                    },
+                    }
 
                     b"Name" => name = reader.read_text(e.name(), &mut Vec::new())?,
                     b"CreationDate" => create_date = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"ExtranetEndpoint" => extranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"IntranetEndpoint" => intranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"ExtranetEndpoint" => {
+                        extranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?
+                    }
+                    b"IntranetEndpoint" => {
+                        intranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?
+                    }
                     b"Location" => location = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"StorageClass" => storage_class = reader.read_text(e.name(), &mut Vec::new())?,
+                    b"StorageClass" => {
+                        storage_class = reader.read_text(e.name(), &mut Vec::new())?
+                    }
                     _ => (),
                 },
                 Ok(Event::End(ref e)) if e.name() == b"Bucket" => {
@@ -237,10 +245,10 @@ impl<'a> ServiceAPI for OSS<'a> {
                         next_marker,
                         id,
                         display_name,
-                        result
+                        result,
                     );
-                    break
-                }, // exits the loop when reaching end of file
+                    break;
+                } // exits the loop when reaching end of file
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
                 _ => (), // There are several other `Event`s we do not consider here
             }

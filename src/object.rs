@@ -8,48 +8,62 @@ use super::oss::OSS;
 use super::utils::*;
 
 pub trait ObjectAPI {
-    fn get_object<S>(
+    fn get_object<S1, S2, H, R>(
         &self,
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        object_name: S1,
+        headers: H,
+        resources: R,
     ) -> Result<Vec<u8>, Error>
     where
-        S: AsRef<str>;
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>;
 
     fn get_object_acl<S>(&self, object_name: S) -> Result<String, Error>
     where
         S: AsRef<str>;
 
-    fn put_object_from_file<S>(
+    fn put_object_from_file<S1, S2, S3, H, R>(
         &self,
-        file: S,
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        file: S1,
+        object_name: S2,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>;
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        S3: AsRef<str>,
+        H: Into<Option<HashMap<S3, S3>>>,
+        R: Into<Option<HashMap<S3, Option<S3>>>>;
 
-    fn put_object_from_buffer<S>(
+    fn put_object_from_buffer<S1, S2, H, R>(
         &self,
         buf: &[u8],
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        object_name: S1,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>;
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>;
 
-    fn copy_object_from_object<S>(
+    fn copy_object_from_object<S1, S2, S3, H, R>(
         &self,
-        src: S,
-        dest: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        src: S1,
+        dest: S2,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>;
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        S3: AsRef<str>,
+        H: Into<Option<HashMap<S3, S3>>>,
+        R: Into<Option<HashMap<S3, Option<S3>>>>;
 
     fn delete_object<S>(&self, object_name: S) -> Result<(), Error>
     where
@@ -57,17 +71,20 @@ pub trait ObjectAPI {
 }
 
 impl<'a> ObjectAPI for OSS<'a> {
-    fn get_object<S>(
+    fn get_object<S1, S2, H, R>(
         &self,
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        object_name: S1,
+        headers: H,
+        resources: R,
     ) -> Result<Vec<u8>, Error>
     where
-        S: AsRef<str>,
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
         let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
@@ -75,7 +92,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
 
-        let mut headers = if let Some(h) = headers {
+        let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?
         } else {
             HeaderMap::new()
@@ -132,18 +149,22 @@ impl<'a> ObjectAPI for OSS<'a> {
         Ok(grant)
     }
 
-    fn put_object_from_file<S>(
+    fn put_object_from_file<S1, S2, S3, H, R>(
         &self,
-        file: S,
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        file: S1,
+        object_name: S2,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>,
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        S3: AsRef<str>,
+        H: Into<Option<HashMap<S3, S3>>>,
+        R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
         let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
@@ -151,7 +172,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
         let buf = load_file_to_string(file)?;
-        let mut headers = if let Some(h) = headers {
+        let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?
         } else {
             HeaderMap::new()
@@ -180,25 +201,28 @@ impl<'a> ObjectAPI for OSS<'a> {
         }
     }
 
-    fn put_object_from_buffer<S>(
+    fn put_object_from_buffer<S1, S2, H, R>(
         &self,
         buf: &[u8],
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        object_name: S1,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>,
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
         let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
         };
         let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
-        let mut headers = if let Some(h) = headers {
+        let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?
         } else {
             HeaderMap::new()
@@ -232,25 +256,29 @@ impl<'a> ObjectAPI for OSS<'a> {
         }
     }
 
-    fn copy_object_from_object<S>(
+    fn copy_object_from_object<S1, S2, S3, H, R>(
         &self,
-        src: S,
-        object_name: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        src: S1,
+        object_name: S2,
+        headers: H,
+        resources: R,
     ) -> Result<(), Error>
     where
-        S: AsRef<str>,
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        S3: AsRef<str>,
+        H: Into<Option<HashMap<S3, S3>>>,
+        R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
         let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
         };
         let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
-        let mut headers = if let Some(h) = headers {
+        let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?
         } else {
             HeaderMap::new()
