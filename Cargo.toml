@@ -19,3 +19,6 @@ futures = "0.1"
 tokio = "0.1.11"
 derive_more = "0.15"
 http = "0.1"
+
+[dev-dependencies]
+tokio-core = "0.1.17"

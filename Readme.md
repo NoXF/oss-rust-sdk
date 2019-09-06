@@ -72,7 +72,7 @@ let mut headers = HashMap::new();
 headers.insert("content-type", "text/plain");
 
 // return Future<Item = (async_reqwest::Response), Error = Error>
-oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name",Some(headers),None);
+oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name", headers,None);
 ```
 
 ## Copy Object

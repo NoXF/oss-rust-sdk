@@ -193,16 +193,20 @@ impl<'a> OSS<'a> {
             })
     }
 
-    pub fn async_put_object_from_buffer<S>(
+    pub fn async_put_object_from_buffer<S1, S2, H, R>(
         &self,
         buf: &[u8],
-        object: S,
-        headers: Option<HashMap<S, S>>,
-        resources: Option<HashMap<S, Option<S>>>,
+        object: S1,
+        headers: H,
+        resources: R,
     ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> 
-    where S: AsRef<str> {
+    where 
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,{
         let object = object.as_ref();
-        let resources_str = if let Some(r) = resources {
+        let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
         } else {
             String::new()
@@ -210,7 +214,7 @@ impl<'a> OSS<'a> {
         let host = self.host(self.bucket(), object, &resources_str);
         let date = self.date();
 
-        let mut headers = if let Some(h) = headers {
+        let mut headers = if let Some(h) = headers.into() {
             to_headers(h).unwrap()
         } else {
             HeaderMap::new()
