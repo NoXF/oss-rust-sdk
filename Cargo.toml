@@ -10,14 +10,14 @@ repository = "https://github.com/NoXF/oss-rust-sdk"
 
 [dependencies]
 reqwest = { version = "0.10.1", features = ["json"] }
-base64 = "0.10.0"
+base64 = "0.11.0"
 chrono = "0.4"
 rust-crypto = "^0.2"
 log = "0.4.6"
-quick-xml = "0.12.0"
+quick-xml = "0.17.2"
 futures = "0.3.1"
 tokio = "0.2.10"
-derive_more = "0.15"
+derive_more = "0.99.2"
 http = "0.2.0"
 bytes = "0.5.3"
 
