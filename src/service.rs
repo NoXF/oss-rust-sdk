@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use super::auth::*;
 use super::errors::Error;
 use super::oss::OSS;
+use futures::executor::block_on;
 
 #[derive(Clone, Debug)]
 pub struct ListBuckets {
@@ -132,16 +133,16 @@ impl Bucket {
 
 pub trait ServiceAPI {
     fn list_bucket<S, R>(&self, resources: R) -> Result<ListBuckets, Error>
-    where
-        S: AsRef<str>,
-        R: Into<Option<HashMap<S, Option<S>>>>;
+        where
+            S: AsRef<str>,
+            R: Into<Option<HashMap<S, Option<S>>>>;
 }
 
 impl<'a> ServiceAPI for OSS<'a> {
     fn list_bucket<S, R>(&self, resources: R) -> Result<ListBuckets, Error>
-    where
-        S: AsRef<str>,
-        R: Into<Option<HashMap<S, Option<S>>>>,
+        where
+            S: AsRef<str>,
+            R: Into<Option<HashMap<S, Option<S>>>>,
     {
         let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
@@ -164,9 +165,11 @@ impl<'a> ServiceAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let mut resp = self.client.get(host).headers(headers).send()?;
+        let xml_str = block_on(async {
+            let resp = self.client.get(host).headers(headers).send().await?;
+            resp.text().await
+        })?;
 
-        let xml_str = resp.text()?;
         let mut result = Vec::new();
         let mut reader = Reader::from_str(xml_str.as_str());
         reader.trim_text(true);

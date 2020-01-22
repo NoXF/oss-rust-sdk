@@ -1,15 +1,14 @@
-use std::{mem, str};
+use std::str;
 use std::collections::HashMap;
 use std::borrow::Cow;
 use chrono::prelude::*;
 use reqwest::Client;
-use reqwest::r#async as async_reqwest;
+use reqwest;
 use reqwest::header::{HeaderMap, DATE};
-use futures::{Future, Stream};
-pub use reqwest::r#async::Chunk;
 
 use super::auth::*;
 use super::utils::*;
+use bytes::Bytes;
 
 #[derive(Clone, Debug)]
 pub struct OSS<'a> {
@@ -74,7 +73,7 @@ const RESOURCES: [&str; 50] = [
 ];
 
 impl<'a> OSS<'a> {
-    pub fn new<S> (key_id: S, key_secret: S, endpoint: S, bucket: S) -> Self
+    pub fn new<S>(key_id: S, key_secret: S, endpoint: S, bucket: S) -> Self
         where S: Into<Cow<'a, str>> {
         OSS {
             key_id: key_id.into(),
@@ -130,8 +129,8 @@ impl<'a> OSS<'a> {
         now.format("%a, %d %b %Y %T GMT").to_string()
     }
 
-    pub fn get_resources_str<S>(&self, params: HashMap<S, Option<S>>) -> String 
-    where S: AsRef<str> {
+    pub fn get_resources_str<S>(&self, params: HashMap<S, Option<S>>) -> String
+        where S: AsRef<str> {
         let mut resources: Vec<(&S, &Option<S>)> = params
             .iter()
             .filter(|(k, _)| RESOURCES.contains(&k.as_ref()))
@@ -151,13 +150,13 @@ impl<'a> OSS<'a> {
         result
     }
 
-    pub fn async_get_object<S>(
+    pub async fn async_get_object<S>(
         &self,
         object: S,
         headers: Option<HashMap<S, S>>,
         resources: Option<HashMap<S, Option<S>>>,
-    ) -> impl Future<Item = Chunk, Error = reqwest::Error> 
-    where S: AsRef<str> {
+    ) -> Result<Bytes, reqwest::Error>
+        where S: AsRef<str> {
         let object = object.as_ref();
         let resources_str = if let Some(r) = resources {
             self.get_resources_str(r)
@@ -183,28 +182,26 @@ impl<'a> OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse().unwrap());
 
-        async_reqwest::Client::new()
+        reqwest::Client::new()
             .get(&host)
             .headers(headers)
-            .send()
-            .and_then(|mut resp| {
-                let body = mem::replace(resp.body_mut(), async_reqwest::Decoder::empty());
-                body.concat2()
-            })
+            .send().await?
+            .bytes()
+            .await
     }
 
-    pub fn async_put_object_from_buffer<S1, S2, H, R>(
+    pub async fn async_put_object_from_buffer<S1, S2, H, R>(
         &self,
         buf: &[u8],
         object: S1,
         headers: H,
         resources: R,
-    ) -> impl Future<Item = (async_reqwest::Response), Error = reqwest::Error> 
-    where 
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        H: Into<Option<HashMap<S2, S2>>>,
-        R: Into<Option<HashMap<S2, Option<S2>>>>,{
+    ) -> Result<reqwest::Response, reqwest::Error>
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            H: Into<Option<HashMap<S2, S2>>>,
+            R: Into<Option<HashMap<S2, Option<S2>>>>, {
         let object = object.as_ref();
         let resources_str = if let Some(r) = resources.into() {
             self.get_resources_str(r)
@@ -231,11 +228,10 @@ impl<'a> OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse().unwrap());
 
-        async_reqwest::Client::new()
+        reqwest::Client::new()
             .put(&host)
             .headers(headers)
             .body(buf.to_owned())
-            .send()
-            .map(|resp| resp)
+            .send().await
     }
 }

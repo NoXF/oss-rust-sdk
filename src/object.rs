@@ -6,6 +6,9 @@ use super::auth::*;
 use super::errors::{Error, ObjectError};
 use super::oss::OSS;
 use super::utils::*;
+use http::HeaderValue;
+use futures::executor::block_on;
+use bytes::Bytes;
 
 pub trait ObjectAPI {
     fn get_object<S1, S2, H, R>(
@@ -13,16 +16,16 @@ pub trait ObjectAPI {
         object_name: S1,
         headers: H,
         resources: R,
-    ) -> Result<Vec<u8>, Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        H: Into<Option<HashMap<S2, S2>>>,
-        R: Into<Option<HashMap<S2, Option<S2>>>>;
+    ) -> Result<Bytes, Error>
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            H: Into<Option<HashMap<S2, S2>>>,
+            R: Into<Option<HashMap<S2, Option<S2>>>>;
 
     fn get_object_acl<S>(&self, object_name: S) -> Result<String, Error>
-    where
-        S: AsRef<str>;
+        where
+            S: AsRef<str>;
 
     fn put_object_from_file<S1, S2, S3, H, R>(
         &self,
@@ -31,12 +34,12 @@ pub trait ObjectAPI {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        S3: AsRef<str>,
-        H: Into<Option<HashMap<S3, S3>>>,
-        R: Into<Option<HashMap<S3, Option<S3>>>>;
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            S3: AsRef<str>,
+            H: Into<Option<HashMap<S3, S3>>>,
+            R: Into<Option<HashMap<S3, Option<S3>>>>;
 
     fn put_object_from_buffer<S1, S2, H, R>(
         &self,
@@ -45,11 +48,11 @@ pub trait ObjectAPI {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        H: Into<Option<HashMap<S2, S2>>>,
-        R: Into<Option<HashMap<S2, Option<S2>>>>;
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            H: Into<Option<HashMap<S2, S2>>>,
+            R: Into<Option<HashMap<S2, Option<S2>>>>;
 
     fn copy_object_from_object<S1, S2, S3, H, R>(
         &self,
@@ -58,16 +61,16 @@ pub trait ObjectAPI {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        S3: AsRef<str>,
-        H: Into<Option<HashMap<S3, S3>>>,
-        R: Into<Option<HashMap<S3, Option<S3>>>>;
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            S3: AsRef<str>,
+            H: Into<Option<HashMap<S3, S3>>>,
+            R: Into<Option<HashMap<S3, Option<S3>>>>;
 
     fn delete_object<S>(&self, object_name: S) -> Result<(), Error>
-    where
-        S: AsRef<str>;
+        where
+            S: AsRef<str>;
 }
 
 impl<'a> ObjectAPI for OSS<'a> {
@@ -76,12 +79,12 @@ impl<'a> ObjectAPI for OSS<'a> {
         object_name: S1,
         headers: H,
         resources: R,
-    ) -> Result<Vec<u8>, Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        H: Into<Option<HashMap<S2, S2>>>,
-        R: Into<Option<HashMap<S2, Option<S2>>>>,
+    ) -> Result<Bytes, Error>
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            H: Into<Option<HashMap<S2, S2>>>,
+            R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
         let object_name = object_name.as_ref();
         let resources_str = if let Some(r) = resources.into() {
@@ -109,27 +112,27 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let mut resp = self.client.get(&host).headers(headers).send()?;
-        let mut buf: Vec<u8> = vec![];
+        block_on(async {
+            let resp = self.client.get(&host).headers(headers).send().await?;
 
-        if resp.status().is_success() {
-            resp.copy_to(&mut buf)?;
-            Ok(buf)
-        } else {
-            Err(Error::Object(ObjectError::GetError {
-                msg: format!("can not get object, status code: {}", resp.status()).into(),
-            }))
-        }
+            if resp.status().is_success() {
+                Ok(resp.bytes().await?)
+            } else {
+                Err(Error::Object(ObjectError::GetError {
+                    msg: format!("can not get object, status code: {}", resp.status()).into(),
+                }))
+            }
+        })
     }
 
     fn get_object_acl<S>(&self, object_name: S) -> Result<String, Error>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let object_name = object_name.as_ref();
         let mut params: HashMap<&str, Option<&str>> = HashMap::new();
         params.insert("acl", None);
-        let result = String::from_utf8(self.get_object(object_name, None, Some(params))?)?;
+        let result = String::from_utf8(self.get_object(object_name, None, Some(params))?.to_vec())?;
         let mut reader = Reader::from_str(&result);
         reader.trim_text(true);
         let mut buf = Vec::new();
@@ -156,12 +159,12 @@ impl<'a> ObjectAPI for OSS<'a> {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        S3: AsRef<str>,
-        H: Into<Option<HashMap<S3, S3>>>,
-        R: Into<Option<HashMap<S3, Option<S3>>>>,
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            S3: AsRef<str>,
+            H: Into<Option<HashMap<S3, S3>>>,
+            R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
         let object_name = object_name.as_ref();
         let resources_str = if let Some(r) = resources.into() {
@@ -190,7 +193,9 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = self.client.put(&host).headers(headers).body(buf).send()?;
+        let resp = block_on(async {
+            self.client.put(&host).headers(headers).body(buf).send().await
+        })?;
 
         if resp.status().is_success() {
             Ok(())
@@ -208,11 +213,11 @@ impl<'a> ObjectAPI for OSS<'a> {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        H: Into<Option<HashMap<S2, S2>>>,
-        R: Into<Option<HashMap<S2, Option<S2>>>>,
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            H: Into<Option<HashMap<S2, S2>>>,
+            R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
         let object_name = object_name.as_ref();
         let resources_str = if let Some(r) = resources.into() {
@@ -240,12 +245,13 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = self
-            .client
-            .put(&host)
-            .headers(headers)
-            .body(buf.to_owned())
-            .send()?;
+        let resp = block_on(async {
+            self.client
+                .put(&host)
+                .headers(headers)
+                .body(buf.to_owned())
+                .send().await
+        })?;
 
         if resp.status().is_success() {
             Ok(())
@@ -263,12 +269,12 @@ impl<'a> ObjectAPI for OSS<'a> {
         headers: H,
         resources: R,
     ) -> Result<(), Error>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        S3: AsRef<str>,
-        H: Into<Option<HashMap<S3, S3>>>,
-        R: Into<Option<HashMap<S3, Option<S3>>>>,
+        where
+            S1: AsRef<str>,
+            S2: AsRef<str>,
+            S3: AsRef<str>,
+            H: Into<Option<HashMap<S3, S3>>>,
+            R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
         let object_name = object_name.as_ref();
         let resources_str = if let Some(r) = resources.into() {
@@ -296,7 +302,9 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = self.client.put(&host).headers(headers).send()?;
+        let resp = block_on(async {
+            self.client.put(&host).headers(headers).send().await
+        })?;
 
         if resp.status().is_success() {
             Ok(())
@@ -308,8 +316,8 @@ impl<'a> ObjectAPI for OSS<'a> {
     }
 
     fn delete_object<S>(&self, object_name: S) -> Result<(), Error>
-    where
-        S: AsRef<str>,
+        where
+            S: AsRef<str>,
     {
         let object_name = object_name.as_ref();
         let host = self.host(self.bucket(), object_name, "");
@@ -326,9 +334,9 @@ impl<'a> ObjectAPI for OSS<'a> {
             "",
             &headers,
         );
-        headers.insert("Authorization", authorization.parse()?);
+        headers.insert("Authorization", authorization.parse::<HeaderValue>()?);
 
-        let resp = self.client.delete(&host).headers(headers).send()?;
+        let resp = block_on(async { self.client.delete(&host).headers(headers).send().await })?;
 
         if resp.status().is_success() {
             Ok(())
