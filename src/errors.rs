@@ -1,9 +1,9 @@
-use std::io::Error as IoError;
-use std::error::Error as StdError;
-use reqwest::Error as ReqwestError;
-use quick_xml::Error as QxmlError;
-use http::header::InvalidHeaderValue as HttpInvalidHeaderValueError;
 use http::header::InvalidHeaderName as HttpInvalidHeaderNameError;
+use http::header::InvalidHeaderValue as HttpInvalidHeaderValueError;
+use quick_xml::Error as QxmlError;
+use reqwest::Error as ReqwestError;
+use std::error::Error as StdError;
+use std::io::Error as IoError;
 use std::string::FromUtf8Error;
 
 #[derive(Debug, Display)]
@@ -19,7 +19,7 @@ pub enum Error {
 #[derive(Debug, Display)]
 pub enum HttpError {
     HttpInvalidHeaderValue(HttpInvalidHeaderValueError),
-    HttpInvalidHeaderName(HttpInvalidHeaderNameError)
+    HttpInvalidHeaderName(HttpInvalidHeaderNameError),
 }
 
 impl From<QxmlError> for Error {
@@ -39,7 +39,6 @@ impl From<ReqwestError> for Error {
         Error::Reqwest(e)
     }
 }
-
 
 impl From<HttpInvalidHeaderValueError> for Error {
     fn from(e: HttpInvalidHeaderValueError) -> Error {
@@ -62,13 +61,13 @@ impl From<FromUtf8Error> for Error {
 #[derive(Debug, Display)]
 pub enum ObjectError {
     #[display(fmt = "PUT ERROR: {}", msg)]
-    PutError {msg: String},
-    #[display(fmt = "PUT ERROR: {}", msg)]
-    GetError{msg: String},
-    #[display(fmt = "PUT ERROR: {}", msg)]
-    CopyError{msg: String},
-    #[display(fmt = "PUT ERROR: {}", msg)]
-    DeleteError{msg: String},
+    PutError { msg: String },
+    #[display(fmt = "GET ERROR: {}", msg)]
+    GetError { msg: String },
+    #[display(fmt = "COPY ERROR: {}", msg)]
+    CopyError { msg: String },
+    #[display(fmt = "DELETE ERROR: {}", msg)]
+    DeleteError { msg: String },
 }
 
 impl StdError for Error {}
