@@ -164,7 +164,7 @@ impl<'a> ServiceAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let mut resp = self.client.get(host).headers(headers).send()?;
+        let resp = self.client.get(host).headers(headers).send()?;
 
         let xml_str = resp.text()?;
         let mut result = Vec::new();
