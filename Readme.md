@@ -35,15 +35,25 @@ let buffer = result.unwrap();
 
 ## Get Object async
 ```rust
-use std::str;
+use tokio::runtime::Runtime;
 
-fn wrap() -> impl Future<Item=String, Error=(Error)> {
+fn async_get_object_demo() {
     let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-    let ret = oss_instance.async_get_object("your_object_name", None, None)
-        .map(|body| {
-            str::from_utf8(&body).unwrap().to_string()
-        });
-    ret
+
+    let mut rt = Runtime::new().expect("failed to start runtime");
+
+    rt.block_on(async move {
+        let _result = oss_instance.async_get_object("objectName", None, None).await.unwrap();
+        println!("buffer = {:?}", String::from_utf8(result.unwrap()));
+    });
+}
+
+or
+
+async fn async_get_object_demo() -> Reuslt<String, Error> {
+    let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
+    let buf = oss_instance.async_get_object("objectName", None, None).await?;
+    String::from_utf8(buf)?
 }
 ```
 
@@ -71,8 +81,7 @@ let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_En
 let mut headers = HashMap::new();
 headers.insert("content-type", "text/plain");
 
-// return Future<Item = (async_reqwest::Response), Error = Error>
-oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name", headers,None);
+oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name", headers,None).await?;
 ```
 
 ## Copy Object

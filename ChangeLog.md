@@ -1,3 +1,5 @@
+* 0.2.0
+	* embrace async/await
 * 0.1.10
 	* more elegant api for str or String parameters
 * 0.1.8
