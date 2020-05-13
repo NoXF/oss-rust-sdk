@@ -1,9 +1,8 @@
 use std::str;
 
-use futures::Future;
 use oss_rust_sdk::prelude::*;
 use reqwest::Error;
-use tokio_core::reactor::Core;
+use tokio::runtime::Runtime;
 
 fn main() {
     println!("Hello, world!");
@@ -19,18 +18,12 @@ fn sync_get_object_demo() {
 }
 
 fn async_get_object_demo() {
-    let mut core = Core::new().unwrap();
-    let _handle = core.handle();
-
-    let async_result = core.run(wrap("objectName")).unwrap();
-    println!("async_result = {}", async_result);
-}
-
-fn wrap(bucket_name: &str) -> impl Future<Item=String, Error=(Error)> {
     let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-    let ret = oss_instance.async_get_object(bucket_name, None, None)
-        .map(|body| {
-            str::from_utf8(&body).unwrap().to_string()
-        });
-    ret
+
+    let mut rt = Runtime::new().expect("failed to start runtime");
+
+    rt.block_on(async move {
+        let _result = oss_instance.async_get_object("objectName", None, None).await.unwrap();
+        println!("buffer = {:?}", String::from_utf8(result.unwrap()));
+    });
 }
