@@ -171,7 +171,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         };
         let host = self.host(self.bucket(), object_name, &resources_str);
         let date = self.date();
-        let buf = load_file_to_string(file)?;
+        let buf = load_file(file)?;
         let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?
         } else {

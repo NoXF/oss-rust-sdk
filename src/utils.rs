@@ -5,17 +5,17 @@ use std::collections::HashMap;
 use super::errors::Error;
 
 #[inline]
-pub fn load_file_to_string<S>(p: S) -> Result<String, Error> 
+pub fn load_file<S>(p: S) -> Result<Vec<u8>, Error>
 where S: AsRef<str> {
     let p = p.as_ref();
     let f = File::open(p)?;
     let mut f = BufReader::new(f);
-    let mut s = String::new();
-    f.read_to_string(&mut s)?;
+    let mut s = Vec::new();
+    f.read_to_end(&mut s)?;
     Ok(s)
 }
 
-pub fn to_headers<S>(hashmap: HashMap<S, S>) -> Result<HeaderMap, Error> 
+pub fn to_headers<S>(hashmap: HashMap<S, S>) -> Result<HeaderMap, Error>
     where S: AsRef<str> {
     let mut headers = HeaderMap::new();
     for (key, val) in hashmap.iter() {
