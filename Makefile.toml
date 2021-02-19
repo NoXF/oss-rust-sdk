@@ -1,0 +1,18 @@
+[config]
+skip_core_tasks = true
+
+[tasks.test-browser]
+script_runner = "@duckscript"
+script = '''
+set_env CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER wasm-bindgen-test-runner
+set_env CHROMEDRIVER ./tests/fixtures/chromedriver
+set_env WASM_BINDGEN_TEST_TIMEOUT 20000
+exec cargo test --target wasm32-unknown-unknown
+'''
+
+[tasks.test-wasm]
+script_runner = "@duckscript"
+script = '''
+set_env CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER wasm-bindgen-test-runner
+exec cargo test --target wasm32-unknown-unknown
+'''

@@ -9,14 +9,20 @@ license = "Apache-2.0"
 repository = "https://github.com/NoXF/oss-rust-sdk"
 
 [dependencies]
-reqwest = { version = "0.10.4", features = ["blocking"] }
 base64 = "0.12.1"
-chrono = "0.4"
-rust-crypto = "^0.2"
+chrono = { version = "0.4", features = ["wasmbind"] }
 log = "0.4.6"
 quick-xml = "0.18.1"
 derive_more = "0.99.5"
-bytes = "0.5.4"
+bytes = "1.0"
+sha-1 = "0.9.4"
+hmac = "0.10.1"
 
-[dev-dependencies]
-tokio = { version = "0.2.20", features = ["full"] }
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+reqwest = { version = "0.11", features = ["blocking"] }
+tokio = { version = "1.0", features = ["full"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { version = "0.11" }
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"

@@ -1,13 +1,20 @@
 use bytes::Bytes;
 use chrono::prelude::*;
-use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, DATE};
+use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
 
 use super::auth::*;
+use super::errors::{Error, ObjectError};
 use super::utils::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use reqwest::blocking::Client;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::*;
+#[cfg(target_arch = "wasm32")]
+use reqwest::Client;
 
 #[derive(Clone, Debug)]
 pub struct OSS<'a> {
@@ -81,7 +88,10 @@ impl<'a> OSS<'a> {
             key_secret: key_secret.into(),
             endpoint: endpoint.into(),
             bucket: bucket.into(),
+            #[cfg(not(target_arch = "wasm32"))]
             client: reqwest::blocking::Client::new(),
+            #[cfg(target_arch = "wasm32")]
+            client: reqwest::Client::new(),
         }
     }
 
@@ -241,5 +251,120 @@ impl<'a> OSS<'a> {
             .send()
             .await?;
         Ok(res.bytes().await?)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<'a> OSS<'a> {
+    pub async fn get_object<S1, S2, H, R>(
+        &self,
+        object_name: S1,
+        headers: H,
+        resources: R,
+    ) -> Result<Vec<u8>, Error>
+    where
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
+    {
+        let object_name = object_name.as_ref();
+        let resources_str = if let Some(r) = resources.into() {
+            self.get_resources_str(r)
+        } else {
+            String::new()
+        };
+        let host = self.host(self.bucket(), object_name, &resources_str);
+        let date = self.date();
+
+        let mut headers = if let Some(h) = headers.into() {
+            to_headers(h)?
+        } else {
+            HeaderMap::new()
+        };
+        headers.insert(DATE, date.parse()?);
+        let authorization = self.oss_sign(
+            "GET",
+            self.key_id(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            &resources_str,
+            &headers,
+        );
+        headers.insert("Authorization", authorization.parse()?);
+
+        let request = Client::new().get(&host).headers(headers);
+        console_log!("{:?}", request);
+        let resp = request.send().await?;
+        // let resp = self.client.get(&host).headers(headers).send().await?;
+        // let mut buf: Vec<u8> = vec![];
+
+        if resp.status().is_success() {
+            // resp.copy_to(&mut buf)?;
+            // Ok(buf)
+            let text = resp.text().await?;
+            Ok(text.as_bytes().to_vec())
+        } else {
+            Err(Error::Object(ObjectError::GetError {
+                msg: format!("can not get object, status code: {}", resp.status()).into(),
+            }))
+        }
+    }
+
+    async fn put_object_from_buffer<S1, S2, H, R>(
+        &self,
+        buf: &[u8],
+        object_name: S1,
+        headers: H,
+        resources: R,
+    ) -> Result<(), Error>
+    where
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
+    {
+        let object_name = object_name.as_ref();
+        let resources_str = if let Some(r) = resources.into() {
+            self.get_resources_str(r)
+        } else {
+            String::new()
+        };
+        let host = self.host(self.bucket(), object_name, &resources_str);
+        let date = self.date();
+        let mut headers = if let Some(h) = headers.into() {
+            to_headers(h)?
+        } else {
+            HeaderMap::new()
+        };
+        headers.insert(DATE, date.parse()?);
+        headers.insert(CONTENT_LENGTH, buf.len().to_string().parse()?);
+        let authorization = self.oss_sign(
+            "PUT",
+            self.key_id(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            &resources_str,
+            &headers,
+        );
+        headers.insert("Authorization", authorization.parse()?);
+
+        let resp = self
+            .client
+            .put(&host)
+            .headers(headers)
+            .body(buf.to_owned())
+            .send()
+            .await?;
+
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            Err(Error::Object(ObjectError::PutError {
+                msg: format!("can not put object, status code: {}", resp.status()).into(),
+            }))
+        }
     }
 }
