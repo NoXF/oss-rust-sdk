@@ -1,10 +1,11 @@
 use reqwest::header::{CONTENT_TYPE, DATE};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
-use crypto::sha1::Sha1;
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
 use base64::encode;
+use sha1::Sha1;
+use hmac::{Hmac,Mac,NewMac};
+
+type HmacSha1 = Hmac<Sha1>;
 
 use super::oss::OSS;
 
@@ -65,9 +66,9 @@ impl<'a> Auth for OSS<'a> {
             verb, content_md5, content_type, date, oss_headers_str, oss_resource_str
         );
 
-        let mut hasher = Hmac::new(Sha1::new(), key_secret.as_bytes());
-        hasher.input(sign_str.as_bytes());
-        let sign_str_base64 = encode(hasher.result().code());
+        let mut mac = HmacSha1::new_varkey(key_secret.as_bytes()).expect("HMAC can take key of any size");
+        mac.update(sign_str.as_bytes());
+        let sign_str_base64 = encode(mac.finalize().into_bytes());
 
         let authorization = format!("OSS {}:{}", key_id, sign_str_base64);
         debug!("authorization: {}", authorization);

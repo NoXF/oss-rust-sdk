@@ -1,13 +1,20 @@
 use bytes::Bytes;
 use chrono::prelude::*;
-use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, DATE};
+use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
 
 use super::auth::*;
+use super::errors::{Error, ObjectError};
 use super::utils::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use reqwest::blocking::Client;
+#[cfg(target_arch = "wasm32")]
+use reqwest::Client;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::*;
 
 #[derive(Clone, Debug)]
 pub struct OSS<'a> {
@@ -81,7 +88,7 @@ impl<'a> OSS<'a> {
             key_secret: key_secret.into(),
             endpoint: endpoint.into(),
             bucket: bucket.into(),
-            client: reqwest::blocking::Client::new(),
+            client: Client::new(),
         }
     }
 
@@ -158,7 +165,7 @@ impl<'a> OSS<'a> {
         object: S,
         headers: Option<HashMap<S, S>>,
         resources: Option<HashMap<S, Option<S>>>,
-    ) -> Result<Bytes, reqwest::Error>
+    ) -> Result<Bytes, Error>
     where
         S: AsRef<str>,
     {
@@ -171,11 +178,11 @@ impl<'a> OSS<'a> {
         let host = self.host(self.bucket(), object, &resources_str);
         let date = self.date();
         let mut headers = if let Some(h) = headers {
-            to_headers(h).unwrap()
+            to_headers(h)?
         } else {
             HeaderMap::new()
         };
-        headers.insert(DATE, date.parse().unwrap());
+        headers.insert(DATE, date.parse()?);
         let authorization = self.oss_sign(
             "GET",
             self.key_id(),
@@ -185,14 +192,16 @@ impl<'a> OSS<'a> {
             &resources_str,
             &headers,
         );
-        headers.insert("Authorization", authorization.parse().unwrap());
+        headers.insert("Authorization", authorization.parse()?);
 
-        let res = reqwest::Client::new()
-            .get(&host)
-            .headers(headers)
-            .send()
-            .await?;
-        Ok(res.bytes().await?)
+        let res = reqwest::Client::new().get(&host).headers(headers).send().await?;
+        if res.status().is_success() {
+            Ok(res.bytes().await?)
+        } else {
+            Err(Error::Object(ObjectError::PutError {
+                msg: format!("can not put object, status code: {}", res.status()).into(),
+            }))
+        }
     }
 
     pub async fn async_put_object_from_buffer<S1, S2, H, R>(
@@ -201,7 +210,7 @@ impl<'a> OSS<'a> {
         object: S1,
         headers: H,
         resources: R,
-    ) -> Result<Bytes, reqwest::Error>
+    ) -> Result<Bytes, Error>
     where
         S1: AsRef<str>,
         S2: AsRef<str>,
@@ -218,11 +227,11 @@ impl<'a> OSS<'a> {
         let date = self.date();
 
         let mut headers = if let Some(h) = headers.into() {
-            to_headers(h).unwrap()
+            to_headers(h)?
         } else {
             HeaderMap::new()
         };
-        headers.insert(DATE, date.parse().unwrap());
+        headers.insert(DATE, date.parse()?);
         let authorization = self.oss_sign(
             "PUT",
             self.key_id(),
@@ -232,7 +241,7 @@ impl<'a> OSS<'a> {
             &resources_str,
             &headers,
         );
-        headers.insert("Authorization", authorization.parse().unwrap());
+        headers.insert("Authorization", authorization.parse()?);
 
         let res = reqwest::Client::new()
             .put(&host)
@@ -240,6 +249,12 @@ impl<'a> OSS<'a> {
             .body(buf.to_owned())
             .send()
             .await?;
-        Ok(res.bytes().await?)
+        if res.status().is_success() {
+            Ok(res.bytes().await?)
+        } else {
+            Err(Error::Object(ObjectError::PutError {
+                msg: format!("can not put object, status code: {}", res.status()).into(),
+            }))
+        }
     }
 }
