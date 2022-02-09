@@ -1,6 +1,6 @@
 [package]
 name = "oss-rust-sdk"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["NoXF <xianyou.cyq@gmail.com>"]
 edition = "2018"
 readme = "README.md"

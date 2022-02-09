@@ -1,6 +1,5 @@
 use bytes::Bytes;
 use chrono::prelude::*;
-use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, DATE};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -15,7 +14,6 @@ pub struct OSS<'a> {
     key_secret: Cow<'a, str>,
     endpoint: Cow<'a, str>,
     bucket: Cow<'a, str>,
-    pub client: Client,
 }
 
 const RESOURCES: [&str; 50] = [
@@ -81,7 +79,6 @@ impl<'a> OSS<'a> {
             key_secret: key_secret.into(),
             endpoint: endpoint.into(),
             bucket: bucket.into(),
-            client: reqwest::blocking::Client::new(),
         }
     }
 
