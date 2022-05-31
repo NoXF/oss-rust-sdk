@@ -1,10 +1,8 @@
 use quick_xml::{events::Event, Reader};
-use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
 use std::collections::HashMap;
 
 use crate::oss::RequestType;
 
-use super::auth::*;
 use super::errors::{Error, ObjectError};
 use super::oss::OSS;
 use super::utils::*;

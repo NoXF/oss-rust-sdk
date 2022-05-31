@@ -68,6 +68,8 @@ pub enum ObjectError {
     CopyError { msg: String },
     #[display(fmt = "DELETE ERROR: {}", msg)]
     DeleteError { msg: String },
+    #[display(fmt = "HEAD ERROR: {}", msg)]
+    HeadError { msg: String },
 }
 
 impl StdError for Error {}

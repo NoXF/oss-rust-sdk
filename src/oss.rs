@@ -4,6 +4,9 @@ use reqwest::header::{HeaderMap, DATE};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
+use std::time::SystemTime;
+
+use crate::errors::ObjectError;
 
 use super::auth::*;
 use super::errors::Error;
@@ -288,6 +291,7 @@ pub enum RequestType {
     Get,
     Put,
     Delete,
+    Head,
 }
 
 impl RequestType {
@@ -296,6 +300,60 @@ impl RequestType {
             RequestType::Get => "GET",
             RequestType::Put => "PUT",
             RequestType::Delete => "DELETE",
+            RequestType::Head => "HEAD",
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct ObjectMeta {
+    /// The last modified time
+    pub last_modified: SystemTime,
+    /// The size in bytes of the object
+    pub size: usize,
+    /// 128-bits RFC 1864 MD5. This field only presents in normal file. Multipart and append-able file will have empty md5.
+    pub md5: String,
+}
+
+impl ObjectMeta {
+    pub fn from_header_map(header: &HeaderMap) -> Result<Self, Error> {
+        let getter = |key: &str| -> Result<&str, Error> {
+            let value = header
+                .get(key)
+                .ok_or_else(|| {
+                    Error::Object(ObjectError::HeadError {
+                        msg: format!(
+                            "can not find {} in head response, response header: {:?}",
+                            key, header
+                        )
+                        .into(),
+                    })
+                })?
+                .to_str()
+                .map_err(|_| {
+                    Error::Object(ObjectError::HeadError {
+                        msg: format!("header entry {} contains invalid ASCII code", key).into(),
+                    })
+                })?;
+            Ok(value)
+        };
+
+        let last_modified = httpdate::parse_http_date(getter("Last-Modified")?).map_err(|e| {
+            Error::Object(ObjectError::HeadError {
+                msg: format!("cannot parse to system time: {}", e).into(),
+            })
+        })?;
+        let size = getter("Content-Length")?.parse().map_err(|e| {
+            Error::Object(ObjectError::HeadError {
+                msg: format!("cannot parse to number: {}", e).into(),
+            })
+        })?;
+        let md5 = getter("Content-Md5")?.to_string();
+
+        Ok(Self {
+            last_modified,
+            size,
+            md5,
+        })
     }
 }

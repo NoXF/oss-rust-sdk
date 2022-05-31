@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{oss::RequestType, prelude::OSS};
+use crate::{
+    oss::{ObjectMeta, RequestType},
+    prelude::OSS,
+};
 
 use super::errors::{Error, ObjectError};
 
@@ -49,6 +52,10 @@ pub trait AsyncObjectAPI {
         R: Into<Option<HashMap<S3, Option<S3>>>> + Send;
 
     async fn delete_object<S>(&self, object_name: S) -> Result<(), Error>
+    where
+        S: AsRef<str> + Send;
+
+    async fn head_object<S>(&self, object_name: S) -> Result<ObjectMeta, Error>
     where
         S: AsRef<str> + Send;
 }
@@ -172,6 +179,32 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         } else {
             Err(Error::Object(ObjectError::DeleteError {
                 msg: format!("can not delete object, status code: {}", resp.status()).into(),
+            }))
+        }
+    }
+
+    async fn head_object<S>(&self, object_name: S) -> Result<ObjectMeta, Error>
+    where
+        S: AsRef<str> + Send,
+    {
+        let (host, headers) = self.build_request(
+            RequestType::Head,
+            object_name,
+            None::<HashMap<String, String>>,
+            None,
+        )?;
+
+        let resp = reqwest::Client::new()
+            .head(&host)
+            .headers(headers)
+            .send()
+            .await?;
+
+        if resp.status().is_success() {
+            Ok(ObjectMeta::from_header_map(resp.headers())?)
+        } else {
+            Err(Error::Object(ObjectError::DeleteError {
+                msg: format!("can not head object, status code: {}", resp.status()).into(),
             }))
         }
     }
