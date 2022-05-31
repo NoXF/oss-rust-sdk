@@ -17,6 +17,7 @@ log = "0.4.6"
 quick-xml = "0.18.1"
 derive_more = "0.99.5"
 bytes = "1.0"
+async-trait = "0.1.53"
 
 [dev-dependencies]
 tokio = { version = "1.1", features = ["full"] }
