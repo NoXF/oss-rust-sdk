@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{auth::Auth, prelude::OSS, utils::to_headers};
+use crate::{oss::RequestType, prelude::OSS};
 
 use super::errors::{Error, ObjectError};
 
 use async_trait::async_trait;
 use bytes::Bytes;
-use reqwest::header::{HeaderMap, DATE};
 
 #[async_trait]
 pub trait AsyncObjectAPI {
@@ -68,30 +67,8 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S2, S2>>> + Send,
         R: Into<Option<HashMap<S2, Option<S2>>>> + Send,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h).unwrap()
-        } else {
-            HeaderMap::new()
-        };
-        headers.insert(DATE, date.parse().unwrap());
-        let authorization = self.oss_sign(
-            "GET",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse().unwrap());
+        let (host, headers) =
+            self.build_request(RequestType::Get, object_name, headers, resources)?;
 
         let resp = reqwest::Client::new()
             .get(&host)
@@ -121,31 +98,8 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S2, S2>>> + Send,
         R: Into<Option<HashMap<S2, Option<S2>>>> + Send,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
-
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h).unwrap()
-        } else {
-            HeaderMap::new()
-        };
-        headers.insert(DATE, date.parse().unwrap());
-        let authorization = self.oss_sign(
-            "PUT",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse().unwrap());
+        let (host, headers) =
+            self.build_request(RequestType::Put, object_name, headers, resources)?;
 
         let resp = reqwest::Client::new()
             .put(&host)
@@ -181,31 +135,8 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S3, S3>>> + Send,
         R: Into<Option<HashMap<S3, Option<S3>>>> + Send,
     {
-        let dest = dest.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), dest, &resources_str);
-        let date = self.date();
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h)?
-        } else {
-            HeaderMap::new()
-        };
+        let (host, mut headers) = self.build_request(RequestType::Put, dest, headers, resources)?;
         headers.insert("x-oss-copy-source", src.as_ref().parse()?);
-        headers.insert(DATE, date.parse()?);
-        let authorization = self.oss_sign(
-            "PUT",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            dest,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
 
         let resp = reqwest::Client::new()
             .put(&host)
@@ -226,22 +157,9 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
     where
         S: AsRef<str> + Send,
     {
-        let object_name = object_name.as_ref();
-        let host = self.host(self.bucket(), object_name, "");
-        let date = self.date();
-
-        let mut headers = HeaderMap::new();
-        headers.insert(DATE, date.parse()?);
-        let authorization = self.oss_sign(
-            "DELETE",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            "",
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
+        let headers = HashMap::<String, String>::new();
+        let (host, headers) =
+            self.build_request(RequestType::Delete, object_name, Some(headers), None)?;
 
         let resp = reqwest::Client::new()
             .delete(&host)

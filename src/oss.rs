@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::str;
 
 use super::auth::*;
+use super::errors::Error;
 use super::utils::*;
 
 #[derive(Clone, Debug)]
@@ -238,5 +239,63 @@ impl<'a> OSS<'a> {
             .send()
             .await?;
         Ok(res.bytes().await?)
+    }
+
+    /// Build a request. Return url and header for reqwest client builder.
+    pub fn build_request<S1, S2, H, R>(
+        &self,
+        req_type: RequestType,
+        object_name: S1,
+        headers: H,
+        resources: R,
+    ) -> Result<(String, HeaderMap), Error>
+    where
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
+    {
+        let object_name = object_name.as_ref();
+        let resources_str = if let Some(r) = resources.into() {
+            self.get_resources_str(r)
+        } else {
+            String::new()
+        };
+        let host = self.host(self.bucket(), object_name, &resources_str);
+        let date = self.date();
+        let mut headers = if let Some(h) = headers.into() {
+            to_headers(h)?
+        } else {
+            HeaderMap::new()
+        };
+        headers.insert(DATE, date.parse()?);
+        let authorization = self.oss_sign(
+            req_type.as_str(),
+            self.key_id(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            &resources_str,
+            &headers,
+        );
+        headers.insert("Authorization", authorization.parse()?);
+
+        Ok((host, headers))
+    }
+}
+
+pub enum RequestType {
+    Get,
+    Put,
+    Delete,
+}
+
+impl RequestType {
+    fn as_str(&self) -> &str {
+        match self {
+            RequestType::Get => "GET",
+            RequestType::Put => "PUT",
+            RequestType::Delete => "DELETE",
+        }
     }
 }
