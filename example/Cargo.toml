@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 oss-rust-sdk = { path = "../" }
-tokio = { version = "0.2.20", features = ["full"] }
+tokio = { version = "1.18", features = ["full"] }
