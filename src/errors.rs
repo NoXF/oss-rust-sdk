@@ -1,6 +1,6 @@
+use quick_xml::Error as QxmlError;
 use reqwest::header::InvalidHeaderName as HttpInvalidHeaderNameError;
 use reqwest::header::InvalidHeaderValue as HttpInvalidHeaderValueError;
-use quick_xml::Error as QxmlError;
 use reqwest::Error as ReqwestError;
 use std::error::Error as StdError;
 use std::io::Error as IoError;

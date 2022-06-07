@@ -1,10 +1,10 @@
-use reqwest::header::{CONTENT_TYPE, DATE};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::header::{CONTENT_TYPE, DATE};
 
-use crypto::sha1::Sha1;
+use base64::encode;
 use crypto::hmac::Hmac;
 use crypto::mac::Mac;
-use base64::encode;
+use crypto::sha1::Sha1;
 
 use super::oss::OSS;
 

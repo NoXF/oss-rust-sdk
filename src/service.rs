@@ -164,7 +164,10 @@ impl<'a> ServiceAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = reqwest::blocking::Client::new().get(host).headers(headers).send()?;
+        let resp = reqwest::blocking::Client::new()
+            .get(host)
+            .headers(headers)
+            .send()?;
 
         let xml_str = resp.text()?;
         let mut result = Vec::new();

@@ -109,7 +109,10 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let mut resp = reqwest::blocking::Client::new().get(&host).headers(headers).send()?;
+        let mut resp = reqwest::blocking::Client::new()
+            .get(&host)
+            .headers(headers)
+            .send()?;
         let mut buf: Vec<u8> = vec![];
 
         if resp.status().is_success() {
@@ -190,7 +193,11 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = reqwest::blocking::Client::new().put(&host).headers(headers).body(buf).send()?;
+        let resp = reqwest::blocking::Client::new()
+            .put(&host)
+            .headers(headers)
+            .body(buf)
+            .send()?;
 
         if resp.status().is_success() {
             Ok(())
@@ -295,7 +302,10 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = reqwest::blocking::Client::new().put(&host).headers(headers).send()?;
+        let resp = reqwest::blocking::Client::new()
+            .put(&host)
+            .headers(headers)
+            .send()?;
 
         if resp.status().is_success() {
             Ok(())
@@ -327,7 +337,10 @@ impl<'a> ObjectAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = reqwest::blocking::Client::new().delete(&host).headers(headers).send()?;
+        let resp = reqwest::blocking::Client::new()
+            .delete(&host)
+            .headers(headers)
+            .send()?;
 
         if resp.status().is_success() {
             Ok(())

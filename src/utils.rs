@@ -1,12 +1,14 @@
-use std::fs::File;
-use std::io::{BufReader, Read};
+use super::errors::Error;
 use reqwest::header::{HeaderMap, HeaderName};
 use std::collections::HashMap;
-use super::errors::Error;
+use std::fs::File;
+use std::io::{BufReader, Read};
 
 #[inline]
 pub fn load_file<S>(p: S) -> Result<Vec<u8>, Error>
-where S: AsRef<str> {
+where
+    S: AsRef<str>,
+{
     let p = p.as_ref();
     let f = File::open(p)?;
     let mut f = BufReader::new(f);
@@ -16,7 +18,9 @@ where S: AsRef<str> {
 }
 
 pub fn to_headers<S>(hashmap: HashMap<S, S>) -> Result<HeaderMap, Error>
-    where S: AsRef<str> {
+where
+    S: AsRef<str>,
+{
     let mut headers = HeaderMap::new();
     for (key, val) in hashmap.iter() {
         let key = key.as_ref();
