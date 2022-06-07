@@ -1,4 +1,3 @@
-use bytes::Bytes;
 use chrono::prelude::*;
 use reqwest::header::{HeaderMap, DATE};
 use std::borrow::Cow;
