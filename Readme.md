@@ -35,6 +35,8 @@ let buffer = result.unwrap();
 
 ## Get Object async
 ```rust
+use oss_rust_sdk::oss::OSS;
+use oss_rust_sdk::async_object::*;
 use tokio::runtime::Runtime;
 
 fn async_get_object_demo() {
@@ -43,7 +45,7 @@ fn async_get_object_demo() {
     let mut rt = Runtime::new().expect("failed to start runtime");
 
     rt.block_on(async move {
-        let _result = oss_instance.async_get_object("objectName", None, None).await.unwrap();
+        let _ = oss_instance.get_object("objectName", None::<HashMap<&str, &str>>, None).await.unwrap();
         println!("buffer = {:?}", String::from_utf8(result.unwrap()));
     });
 }
@@ -76,12 +78,15 @@ assert_eq!(result.is_ok(), true)
 
 ## Pub Object Async
 ```rust
+use oss_rust_sdk::oss::OSS;
+use oss_rust_sdk::async_object::*;
+
 let buffer = "test async put object from buffer";
 let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
 let mut headers = HashMap::new();
 headers.insert("content-type", "text/plain");
 
-oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name", headers,None).await?;
+oss_instance.put_object(buffer.as_bytes(),"your_object_name", headers,None).await?;
 ```
 
 ## Copy Object
