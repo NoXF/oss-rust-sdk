@@ -1,8 +1,8 @@
 use quick_xml::{events::Event, Reader};
-use reqwest::header::{HeaderMap, CONTENT_LENGTH, DATE};
 use std::collections::HashMap;
 
-use super::auth::*;
+use crate::oss::RequestType;
+
 use super::errors::{Error, ObjectError};
 use super::oss::OSS;
 use super::utils::*;
@@ -83,31 +83,8 @@ impl<'a> ObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S2, S2>>>,
         R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
-
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h)?
-        } else {
-            HeaderMap::new()
-        };
-        headers.insert(DATE, date.parse()?);
-        let authorization = self.oss_sign(
-            "GET",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
+        let (host, headers) =
+            self.build_request(RequestType::Get, object_name, headers, resources)?;
 
         let mut resp = reqwest::blocking::Client::new()
             .get(&host)
@@ -166,32 +143,10 @@ impl<'a> ObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S3, S3>>>,
         R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
+        let (host, headers) =
+            self.build_request(RequestType::Put, object_name, headers, resources)?;
+
         let buf = load_file(file)?;
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h)?
-        } else {
-            HeaderMap::new()
-        };
-        headers.insert(DATE, date.parse()?);
-        headers.insert(CONTENT_LENGTH, buf.len().to_string().parse()?);
-        let authorization = self.oss_sign(
-            "PUT",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
 
         let resp = reqwest::blocking::Client::new()
             .put(&host)
@@ -221,31 +176,8 @@ impl<'a> ObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S2, S2>>>,
         R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h)?
-        } else {
-            HeaderMap::new()
-        };
-        headers.insert(DATE, date.parse()?);
-        headers.insert(CONTENT_LENGTH, buf.len().to_string().parse()?);
-        let authorization = self.oss_sign(
-            "PUT",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
+        let (host, headers) =
+            self.build_request(RequestType::Put, object_name, headers, resources)?;
 
         let resp = reqwest::blocking::Client::new()
             .put(&host)
@@ -276,31 +208,9 @@ impl<'a> ObjectAPI for OSS<'a> {
         H: Into<Option<HashMap<S3, S3>>>,
         R: Into<Option<HashMap<S3, Option<S3>>>>,
     {
-        let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
-        } else {
-            String::new()
-        };
-        let host = self.host(self.bucket(), object_name, &resources_str);
-        let date = self.date();
-        let mut headers = if let Some(h) = headers.into() {
-            to_headers(h)?
-        } else {
-            HeaderMap::new()
-        };
+        let (host, mut headers) =
+            self.build_request(RequestType::Put, object_name, headers, resources)?;
         headers.insert("x-oss-copy-source", src.as_ref().parse()?);
-        headers.insert(DATE, date.parse()?);
-        let authorization = self.oss_sign(
-            "PUT",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            &resources_str,
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
 
         let resp = reqwest::blocking::Client::new()
             .put(&host)
@@ -320,22 +230,9 @@ impl<'a> ObjectAPI for OSS<'a> {
     where
         S: AsRef<str>,
     {
-        let object_name = object_name.as_ref();
-        let host = self.host(self.bucket(), object_name, "");
-        let date = self.date();
-
-        let mut headers = HeaderMap::new();
-        headers.insert(DATE, date.parse()?);
-        let authorization = self.oss_sign(
-            "DELETE",
-            self.key_id(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            "",
-            &headers,
-        );
-        headers.insert("Authorization", authorization.parse()?);
+        let headers = HashMap::<String, String>::new();
+        let (host, headers) =
+            self.build_request(RequestType::Delete, object_name, Some(headers), None)?;
 
         let resp = reqwest::blocking::Client::new()
             .delete(&host)

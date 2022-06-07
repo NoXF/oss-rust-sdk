@@ -4,8 +4,12 @@ use reqwest::header::{HeaderMap, DATE};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
+use std::time::SystemTime;
+
+use crate::errors::ObjectError;
 
 use super::auth::*;
+use super::errors::Error;
 use super::utils::*;
 
 #[derive(Clone, Debug)]
@@ -238,5 +242,118 @@ impl<'a> OSS<'a> {
             .send()
             .await?;
         Ok(res.bytes().await?)
+    }
+
+    /// Build a request. Return url and header for reqwest client builder.
+    pub fn build_request<S1, S2, H, R>(
+        &self,
+        req_type: RequestType,
+        object_name: S1,
+        headers: H,
+        resources: R,
+    ) -> Result<(String, HeaderMap), Error>
+    where
+        S1: AsRef<str>,
+        S2: AsRef<str>,
+        H: Into<Option<HashMap<S2, S2>>>,
+        R: Into<Option<HashMap<S2, Option<S2>>>>,
+    {
+        let object_name = object_name.as_ref();
+        let resources_str = if let Some(r) = resources.into() {
+            self.get_resources_str(r)
+        } else {
+            String::new()
+        };
+        let host = self.host(self.bucket(), object_name, &resources_str);
+        let date = self.date();
+        let mut headers = if let Some(h) = headers.into() {
+            to_headers(h)?
+        } else {
+            HeaderMap::new()
+        };
+        headers.insert(DATE, date.parse()?);
+        let authorization = self.oss_sign(
+            req_type.as_str(),
+            self.key_id(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            &resources_str,
+            &headers,
+        );
+        headers.insert("Authorization", authorization.parse()?);
+
+        Ok((host, headers))
+    }
+}
+
+pub enum RequestType {
+    Get,
+    Put,
+    Delete,
+    Head,
+}
+
+impl RequestType {
+    fn as_str(&self) -> &str {
+        match self {
+            RequestType::Get => "GET",
+            RequestType::Put => "PUT",
+            RequestType::Delete => "DELETE",
+            RequestType::Head => "HEAD",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ObjectMeta {
+    /// The last modified time
+    pub last_modified: SystemTime,
+    /// The size in bytes of the object
+    pub size: usize,
+    /// 128-bits RFC 1864 MD5. This field only presents in normal file. Multipart and append-able file will have empty md5.
+    pub md5: String,
+}
+
+impl ObjectMeta {
+    pub fn from_header_map(header: &HeaderMap) -> Result<Self, Error> {
+        let getter = |key: &str| -> Result<&str, Error> {
+            let value = header
+                .get(key)
+                .ok_or_else(|| {
+                    Error::Object(ObjectError::HeadError {
+                        msg: format!(
+                            "can not find {} in head response, response header: {:?}",
+                            key, header
+                        )
+                        .into(),
+                    })
+                })?
+                .to_str()
+                .map_err(|_| {
+                    Error::Object(ObjectError::HeadError {
+                        msg: format!("header entry {} contains invalid ASCII code", key).into(),
+                    })
+                })?;
+            Ok(value)
+        };
+
+        let last_modified = httpdate::parse_http_date(getter("Last-Modified")?).map_err(|e| {
+            Error::Object(ObjectError::HeadError {
+                msg: format!("cannot parse to system time: {}", e).into(),
+            })
+        })?;
+        let size = getter("Content-Length")?.parse().map_err(|e| {
+            Error::Object(ObjectError::HeadError {
+                msg: format!("cannot parse to number: {}", e).into(),
+            })
+        })?;
+        let md5 = getter("Content-Md5")?.to_string();
+
+        Ok(Self {
+            last_modified,
+            size,
+            md5,
+        })
     }
 }
