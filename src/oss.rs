@@ -22,6 +22,12 @@ pub struct OSS<'a> {
     pub(crate) http_client: Client,
 }
 
+#[derive(Default)]
+pub struct Options {
+    pub pool_max_idle_per_host: Option<usize>,
+    pub timeout: Option<Duration>,
+}
+
 const RESOURCES: [&str; 50] = [
     "acl",
     "uploads",
@@ -80,12 +86,22 @@ impl<'a> OSS<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
-        let http_client = Client::builder()
-            .timeout(Duration::from_secs(60))
-            .pool_max_idle_per_host(1024)
-            .build()
-            .expect("Build http client failed");
+        Self::new_with_opts(key_id, key_secret, endpoint, bucket, Default::default())
+    }
 
+    pub fn new_with_opts<S>(key_id: S, key_secret: S, endpoint: S, bucket: S, opts: Options) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+    {
+        let mut builder = Client::builder();
+        if let Some(timeout) = opts.timeout {
+            builder = builder.timeout(timeout);
+        }
+        if let Some(max_per_host) = opts.pool_max_idle_per_host {
+            builder = builder.pool_max_idle_per_host(max_per_host);
+        }
+
+        let http_client = builder.build().expect("Build http client failed");
         OSS {
             key_id: key_id.into(),
             key_secret: key_secret.into(),
