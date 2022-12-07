@@ -77,11 +77,7 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         let (host, headers) =
             self.build_request(RequestType::Get, object_name, headers, resources)?;
 
-        let resp = reqwest::Client::new()
-            .get(&host)
-            .headers(headers)
-            .send()
-            .await?;
+        let resp = self.http_client.get(&host).headers(headers).send().await?;
 
         if resp.status().is_success() {
             Ok(resp.bytes().await?)
@@ -108,7 +104,8 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         let (host, headers) =
             self.build_request(RequestType::Put, object_name, headers, resources)?;
 
-        let resp = reqwest::Client::new()
+        let resp = self
+            .http_client
             .put(&host)
             .headers(headers)
             .body(buf.to_owned())
@@ -145,11 +142,7 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         let (host, mut headers) = self.build_request(RequestType::Put, dest, headers, resources)?;
         headers.insert("x-oss-copy-source", src.as_ref().parse()?);
 
-        let resp = reqwest::Client::new()
-            .put(&host)
-            .headers(headers)
-            .send()
-            .await?;
+        let resp = self.http_client.put(&host).headers(headers).send().await?;
 
         if resp.status().is_success() {
             Ok(())
@@ -168,7 +161,8 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
         let (host, headers) =
             self.build_request(RequestType::Delete, object_name, Some(headers), None)?;
 
-        let resp = reqwest::Client::new()
+        let resp = self
+            .http_client
             .delete(&host)
             .headers(headers)
             .send()
@@ -194,11 +188,7 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
             None,
         )?;
 
-        let resp = reqwest::Client::new()
-            .head(&host)
-            .headers(headers)
-            .send()
-            .await?;
+        let resp = self.http_client.head(&host).headers(headers).send().await?;
 
         if resp.status().is_success() {
             Ok(ObjectMeta::from_header_map(resp.headers())?)

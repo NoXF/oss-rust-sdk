@@ -1,9 +1,10 @@
 use chrono::prelude::*;
 use reqwest::header::{HeaderMap, DATE};
+use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use crate::errors::ObjectError;
 
@@ -17,6 +18,8 @@ pub struct OSS<'a> {
     key_secret: Cow<'a, str>,
     endpoint: Cow<'a, str>,
     bucket: Cow<'a, str>,
+
+    pub(crate) http_client: Client,
 }
 
 const RESOURCES: [&str; 50] = [
@@ -77,11 +80,18 @@ impl<'a> OSS<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
+        let http_client = Client::builder()
+            .timeout(Duration::from_secs(60))
+            .pool_max_idle_per_host(1024)
+            .build()
+            .expect("Build http client failed");
+
         OSS {
             key_id: key_id.into(),
             key_secret: key_secret.into(),
             endpoint: endpoint.into(),
             bucket: bucket.into(),
+            http_client,
         }
     }
 
