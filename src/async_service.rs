@@ -167,11 +167,7 @@ impl<'a> ServiceAPI for OSS<'a> {
         );
         headers.insert("Authorization", authorization.parse()?);
 
-        let resp = reqwest::Client::new()
-            .get(host)
-            .headers(headers)
-            .send()
-            .await?;
+        let resp = self.http_client.get(host).headers(headers).send().await?;
 
         let xml_str = resp.text().await?;
         let mut result = Vec::new();
