@@ -1,9 +1,10 @@
 use chrono::prelude::*;
 use reqwest::header::{HeaderMap, DATE};
+use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use crate::errors::ObjectError;
 
@@ -17,6 +18,14 @@ pub struct OSS<'a> {
     key_secret: Cow<'a, str>,
     endpoint: Cow<'a, str>,
     bucket: Cow<'a, str>,
+
+    pub(crate) http_client: Client,
+}
+
+#[derive(Default)]
+pub struct Options {
+    pub pool_max_idle_per_host: Option<usize>,
+    pub timeout: Option<Duration>,
 }
 
 const RESOURCES: [&str; 50] = [
@@ -77,11 +86,28 @@ impl<'a> OSS<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
+        Self::new_with_opts(key_id, key_secret, endpoint, bucket, Default::default())
+    }
+
+    pub fn new_with_opts<S>(key_id: S, key_secret: S, endpoint: S, bucket: S, opts: Options) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+    {
+        let mut builder = Client::builder();
+        if let Some(timeout) = opts.timeout {
+            builder = builder.timeout(timeout);
+        }
+        if let Some(max_per_host) = opts.pool_max_idle_per_host {
+            builder = builder.pool_max_idle_per_host(max_per_host);
+        }
+
+        let http_client = builder.build().expect("Build http client failed");
         OSS {
             key_id: key_id.into(),
             key_secret: key_secret.into(),
             endpoint: endpoint.into(),
             bucket: bucket.into(),
+            http_client,
         }
     }
 
