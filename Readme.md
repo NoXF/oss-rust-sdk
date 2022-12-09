@@ -1,3 +1,5 @@
+It's an unofficial Rust port for https://github.com/aliyun/aliyun-oss-cpp-sdk, just implement some API of https://help.aliyun.com/document_detail/31977.html, everyone is welcome to submit a PR to implement which interface you need.
+
 # Getting Started
 
 ## List your_Buckets
@@ -106,12 +108,6 @@ assert_eq!(result.is_ok(), true)
 ```
 
 You can use `oss_instance.set_your_Bucket("your_Bucket")` to change your_Bucket if you want change your_Bucket after instance a oss
-
-## TODO:
-
-- complete object api
-- complete your_Bucket api
-- support async api
 
 ## License
 - Apache License 2.0.
