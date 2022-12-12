@@ -1,4 +1,8 @@
-It's an unofficial Rust port for https://github.com/aliyun/aliyun-oss-cpp-sdk, just implement some API of https://help.aliyun.com/document_detail/31977.html, everyone is welcome to submit a PR to implement which interface you need.
+# OSS-Rust-SDK
+
+[![Latest Version](https://img.shields.io/crates/v/oss-rust-sdk.svg)](https://crates.io/crates/oss-rust-sdk)
+
+It's an unofficial Rust port for https://github.com/aliyun/aliyun-oss-cpp-sdk, just implement core APIs of https://help.aliyun.com/document_detail/31977.html, everyone is welcome to submit a PR to implement which interface you need.
 
 # Getting Started
 
@@ -6,10 +10,10 @@ It's an unofficial Rust port for https://github.com/aliyun/aliyun-oss-cpp-sdk, j
 ```rust
 use oss_rust_sdk::prelude::*;
 let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-let list_your_Buckets = oss_instance.list_your_Bucket(None).unwrap();
+let list_buckets = oss_instance.list_bucket(None).unwrap();
 
-let id = list_your_Buckets.id();
-let your_Buckets = list_your_Buckets.your_Buckets();
+let id = list_buckets.id();
+let your_Buckets = list_buckets.buckets();
 let your_Bucket_names: Vec<&str> = your_Buckets.iter().map(|obj| obj.name()).collect();
 ```
 
@@ -107,7 +111,8 @@ let result = oss_instance.delete_object("object");
 assert_eq!(result.is_ok(), true)
 ```
 
-You can use `oss_instance.set_your_Bucket("your_Bucket")` to change your_Bucket if you want change your_Bucket after instance a oss
+You can use `oss_instance.set_bucket("your_Bucket")` to change specific bucket after create the oss instance.
 
 ## License
+
 - Apache License 2.0.
