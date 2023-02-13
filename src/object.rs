@@ -112,13 +112,12 @@ impl<'a> ObjectAPI for OSS<'a> {
         let result = String::from_utf8(self.get_object(object_name, None, Some(params))?)?;
         let mut reader = Reader::from_str(&result);
         reader.trim_text(true);
-        let mut buf = Vec::new();
         let mut grant = String::new();
 
         loop {
-            match reader.read_event(&mut buf) {
-                Ok(Event::Start(ref e)) if e.name() == b"Grant" => {
-                    grant = reader.read_text(e.name(), &mut Vec::new())?;
+            match reader.read_event() {
+                Ok(Event::Start(ref e)) if e.name() == quick_xml::name::QName(b"Grant") => {
+                    grant = reader.read_text(e.name())?.to_string();
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
