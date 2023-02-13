@@ -2,14 +2,14 @@
 name = "oss-rust-sdk"
 version = "0.6.1"
 authors = ["NoXF <xianyou.cyq@gmail.com>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 description = "Aliyun OSS SDK"
 license = "Apache-2.0"
 repository = "https://github.com/NoXF/oss-rust-sdk"
 
 [dependencies]
-reqwest = { version = "0.11.13", features = ["blocking"] }
+reqwest = { version = "0.11.13", features = ["blocking"], default-features = false, optional = true }
 base64 = "0.13"
 chrono = "0.4.20"
 log = "0.4.17"
@@ -23,3 +23,8 @@ sha1 = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1.1", features = ["full"] }
+
+[features]
+default = [ "native-tls" ]
+native-tls = [ "reqwest/default-tls" ]
+rustls-tls = [ "reqwest/rustls-tls" ]
