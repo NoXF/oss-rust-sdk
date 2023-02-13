@@ -1,4 +1,4 @@
-use quick_xml::{events::Event, Reader};
+use quick_xml::{events::Event, name::QName, Reader};
 use reqwest::header::{HeaderMap, DATE};
 use std::collections::HashMap;
 
@@ -173,7 +173,6 @@ impl<'a> ServiceAPI for OSS<'a> {
         let mut result = Vec::new();
         let mut reader = Reader::from_str(xml_str.as_str());
         reader.trim_text(true);
-        let mut buf = Vec::new();
 
         let mut prefix = String::new();
         let mut marker = String::new();
@@ -193,19 +192,19 @@ impl<'a> ServiceAPI for OSS<'a> {
         let list_buckets;
 
         loop {
-            match reader.read_event(&mut buf) {
+            match reader.read_event() {
                 Ok(Event::Start(ref e)) => match e.name() {
-                    b"Prefix" => prefix = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"Marker" => marker = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"MaxKeys" => max_keys = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"IsTruncated" => {
-                        is_truncated = reader.read_text(e.name(), &mut Vec::new())? == "true"
+                    QName(b"Prefix") => prefix = reader.read_text(e.name())?.to_string(),
+                    QName(b"Marker") => marker = reader.read_text(e.name())?.to_string(),
+                    QName(b"MaxKeys") => max_keys = reader.read_text(e.name())?.to_string(),
+                    QName(b"IsTruncated") => {
+                        is_truncated = reader.read_text(e.name())?.to_string() == "true"
                     }
-                    b"NextMarker" => next_marker = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"ID" => id = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"DisplayName" => display_name = reader.read_text(e.name(), &mut Vec::new())?,
+                    QName(b"NextMarker") => next_marker = reader.read_text(e.name())?.to_string(),
+                    QName(b"ID") => id = reader.read_text(e.name())?.to_string(),
+                    QName(b"DisplayName") => display_name = reader.read_text(e.name())?.to_string(),
 
-                    b"Bucket" => {
+                    QName(b"Bucket") => {
                         name = String::new();
                         location = String::new();
                         create_date = String::new();
@@ -214,21 +213,21 @@ impl<'a> ServiceAPI for OSS<'a> {
                         storage_class = String::new();
                     }
 
-                    b"Name" => name = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"CreationDate" => create_date = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"ExtranetEndpoint" => {
-                        extranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?
+                    QName(b"Name") => name = reader.read_text(e.name())?.to_string(),
+                    QName(b"CreationDate") => create_date = reader.read_text(e.name())?.to_string(),
+                    QName(b"ExtranetEndpoint") => {
+                        extranet_endpoint = reader.read_text(e.name())?.to_string()
                     }
-                    b"IntranetEndpoint" => {
-                        intranet_endpoint = reader.read_text(e.name(), &mut Vec::new())?
+                    QName(b"IntranetEndpoint") => {
+                        intranet_endpoint = reader.read_text(e.name())?.to_string()
                     }
-                    b"Location" => location = reader.read_text(e.name(), &mut Vec::new())?,
-                    b"StorageClass" => {
-                        storage_class = reader.read_text(e.name(), &mut Vec::new())?
+                    QName(b"Location") => location = reader.read_text(e.name())?.to_string(),
+                    QName(b"StorageClass") => {
+                        storage_class = reader.read_text(e.name())?.to_string()
                     }
                     _ => (),
                 },
-                Ok(Event::End(ref e)) if e.name() == b"Bucket" => {
+                Ok(Event::End(ref e)) if e.name() == QName(b"Bucket") => {
                     let bucket = Bucket::new(
                         name.clone(),
                         create_date.clone(),
@@ -255,7 +254,6 @@ impl<'a> ServiceAPI for OSS<'a> {
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
                 _ => (), // There are several other `Event`s we do not consider here
             }
-            buf.clear();
         }
         Ok(list_buckets)
     }
