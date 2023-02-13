@@ -116,7 +116,7 @@ impl<'a> ObjectAPI for OSS<'a> {
 
         loop {
             match reader.read_event() {
-                Ok(Event::Start(ref e)) if e.name() == quick_xml::name::QName(b"Grant") => {
+                Ok(Event::Start(ref e)) if e.name().as_ref() == b"Grant" => {
                     grant = reader.read_text(e.name())?.to_string();
                 }
                 Ok(Event::Eof) => break,

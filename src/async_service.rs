@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use quick_xml::{events::Event, name::QName, Reader};
+use quick_xml::{events::Event, Reader};
 use reqwest::header::{HeaderMap, DATE};
 use std::collections::HashMap;
 
@@ -193,18 +193,18 @@ impl<'a> ServiceAPI for OSS<'a> {
 
         loop {
             match reader.read_event() {
-                Ok(Event::Start(ref e)) => match e.name() {
-                    QName(b"Prefix") => prefix = reader.read_text(e.name())?.to_string(),
-                    QName(b"Marker") => marker = reader.read_text(e.name())?.to_string(),
-                    QName(b"MaxKeys") => max_keys = reader.read_text(e.name())?.to_string(),
-                    QName(b"IsTruncated") => {
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"Prefix" => prefix = reader.read_text(e.name())?.to_string(),
+                    b"Marker" => marker = reader.read_text(e.name())?.to_string(),
+                    b"MaxKeys" => max_keys = reader.read_text(e.name())?.to_string(),
+                    b"IsTruncated" => {
                         is_truncated = reader.read_text(e.name())?.to_string() == "true"
                     }
-                    QName(b"NextMarker") => next_marker = reader.read_text(e.name())?.to_string(),
-                    QName(b"ID") => id = reader.read_text(e.name())?.to_string(),
-                    QName(b"DisplayName") => display_name = reader.read_text(e.name())?.to_string(),
+                    b"NextMarker" => next_marker = reader.read_text(e.name())?.to_string(),
+                    b"ID" => id = reader.read_text(e.name())?.to_string(),
+                    b"DisplayName" => display_name = reader.read_text(e.name())?.to_string(),
 
-                    QName(b"Bucket") => {
+                    b"Bucket" => {
                         name = String::new();
                         location = String::new();
                         create_date = String::new();
@@ -213,21 +213,19 @@ impl<'a> ServiceAPI for OSS<'a> {
                         storage_class = String::new();
                     }
 
-                    QName(b"Name") => name = reader.read_text(e.name())?.to_string(),
-                    QName(b"CreationDate") => create_date = reader.read_text(e.name())?.to_string(),
-                    QName(b"ExtranetEndpoint") => {
+                    b"Name" => name = reader.read_text(e.name())?.to_string(),
+                    b"CreationDate" => create_date = reader.read_text(e.name())?.to_string(),
+                    b"ExtranetEndpoint" => {
                         extranet_endpoint = reader.read_text(e.name())?.to_string()
                     }
-                    QName(b"IntranetEndpoint") => {
+                    b"IntranetEndpoint" => {
                         intranet_endpoint = reader.read_text(e.name())?.to_string()
                     }
-                    QName(b"Location") => location = reader.read_text(e.name())?.to_string(),
-                    QName(b"StorageClass") => {
-                        storage_class = reader.read_text(e.name())?.to_string()
-                    }
+                    b"Location" => location = reader.read_text(e.name())?.to_string(),
+                    b"StorageClass" => storage_class = reader.read_text(e.name())?.to_string(),
                     _ => (),
                 },
-                Ok(Event::End(ref e)) if e.name() == QName(b"Bucket") => {
+                Ok(Event::End(ref e)) if e.name().as_ref() == b"Bucket" => {
                     let bucket = Bucket::new(
                         name.clone(),
                         create_date.clone(),
