@@ -12,6 +12,59 @@ use super::auth::*;
 use super::errors::Error;
 use super::utils::*;
 
+const RESOURCES: [&str; 50] = [
+    "acl",
+    "uploads",
+    "location",
+    "cors",
+    "logging",
+    "website",
+    "referer",
+    "lifecycle",
+    "delete",
+    "append",
+    "tagging",
+    "objectMeta",
+    "uploadId",
+    "partNumber",
+    "security-token",
+    "position",
+    "img",
+    "style",
+    "styleName",
+    "replication",
+    "replicationProgress",
+    "replicationLocation",
+    "cname",
+    "bucketInfo",
+    "comp",
+    "qos",
+    "live",
+    "status",
+    "vod",
+    "startTime",
+    "endTime",
+    "symlink",
+    "x-oss-process",
+    "response-content-type",
+    "response-content-language",
+    "response-expires",
+    "response-cache-control",
+    "response-content-disposition",
+    "response-content-encoding",
+    "udf",
+    "udfName",
+    "udfImage",
+    "udfId",
+    "udfImageDesc",
+    "udfApplication",
+    "comp",
+    "udfApplicationLog",
+    "restore",
+    "callback",
+    "callback-var",
+];
+
 #[derive(Clone, Debug)]
 pub struct OSS<'a> {
     key_id: Cow<'a, str>,
@@ -103,7 +156,30 @@ impl<'a> OSS<'a> {
         now.format("%a, %d %b %Y %T GMT").to_string()
     }
 
-    pub fn get_resources_str<S>(&self, params: HashMap<S, Option<S>>) -> String
+    pub fn get_resources_str<S>(&self, params: &HashMap<S, Option<S>>) -> String
+    where
+        S: AsRef<str>,
+    {
+        let mut resources: Vec<(&S, &Option<S>)> = params
+            .iter()
+            .filter(|(k, _)| RESOURCES.contains(&k.as_ref()))
+            .collect();
+        resources.sort_by(|a, b| a.0.as_ref().to_string().cmp(&b.0.as_ref().to_string()));
+        let mut result = String::new();
+        for (k, v) in resources {
+            if !result.is_empty() {
+                result += "&";
+            }
+            if let Some(vv) = v {
+                result += &format!("{}={}", k.as_ref().to_owned(), vv.as_ref());
+            } else {
+                result += k.as_ref();
+            }
+        }
+        result
+    }
+
+    pub fn get_params_str<S>(&self, params: &HashMap<S, Option<S>>) -> String
     where
         S: AsRef<str>,
     {
@@ -138,12 +214,13 @@ impl<'a> OSS<'a> {
         R: Into<Option<HashMap<S2, Option<S2>>>>,
     {
         let object_name = object_name.as_ref();
-        let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
+        let (resources_str, params_str) = if let Some(r) = resources.into() {
+            (self.get_resources_str(&r), self.get_params_str(&r))
         } else {
-            String::new()
+            (String::new(), String::new())
         };
-        let host = self.host(self.bucket(), object_name, &resources_str);
+
+        let host = self.host(self.bucket(), object_name, &params_str);
         let date = self.date();
         let mut headers = if let Some(h) = headers.into() {
             to_headers(h)?

@@ -20,7 +20,7 @@ pub struct ListObjects {
 }
 
 impl ListObjects {
-    fn new(
+    pub fn new(
         bucket_name: String,
         delimiter: String,
         prefix: String,
@@ -41,6 +41,34 @@ impl ListObjects {
             objects,
         }
     }
+
+    pub fn bucket_name(&self) -> &str {
+        &self.bucket_name
+    }
+
+    pub fn delimiter(&self) -> &str {
+        &self.delimiter
+    }
+
+    pub fn prefix(&self) -> &str {
+        &self.prefix
+    }
+
+    pub fn marker(&self) -> &str {
+        &self.marker
+    }
+
+    pub fn max_keys(&self) -> &str {
+        &self.max_keys
+    }
+
+    pub fn is_truncated(&self) -> bool {
+        self.is_truncated
+    }
+
+    pub fn objects(&self) -> &Vec<Object> {
+        &self.objects
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -56,7 +84,7 @@ pub struct Object {
 }
 
 impl Object {
-    fn new(
+    pub fn new(
         key: String,
         last_modified: String,
         size: usize,
@@ -77,6 +105,38 @@ impl Object {
             owner_id,
             owner_display_name,
         }
+    }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn last_modified(&self) -> &str {
+        &self.last_modified
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    pub fn etag(&self) -> &str {
+        &self.etag
+    }
+
+    pub fn r#type(&self) -> &str {
+        &self.r#type
+    }
+
+    pub fn storage_class(&self) -> &str {
+        &self.storage_class
+    }
+
+    pub fn owner_id(&self) -> &str {
+        &self.owner_id
+    }
+
+    pub fn owner_display_name(&self) -> &str {
+        &self.owner_display_name
     }
 }
 
@@ -165,7 +225,6 @@ impl<'a> ObjectAPI for OSS<'a> {
             .send()?;
 
         let xml_str = resp.text()?;
-        println!("{:?}", &xml_str);
         let mut result = Vec::new();
         let mut reader = Reader::from_str(xml_str.as_str());
         reader.trim_text(true);
@@ -228,7 +287,6 @@ impl<'a> ObjectAPI for OSS<'a> {
                         owner_id.clone(),
                         owner_display_name.clone(),
                     );
-                    dbg!(&object);
                     result.push(object);
                 }
                 Ok(Event::Eof) => {
