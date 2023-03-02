@@ -28,59 +28,6 @@ pub struct Options {
     pub timeout: Option<Duration>,
 }
 
-const RESOURCES: [&str; 50] = [
-    "acl",
-    "uploads",
-    "location",
-    "cors",
-    "logging",
-    "website",
-    "referer",
-    "lifecycle",
-    "delete",
-    "append",
-    "tagging",
-    "objectMeta",
-    "uploadId",
-    "partNumber",
-    "security-token",
-    "position",
-    "img",
-    "style",
-    "styleName",
-    "replication",
-    "replicationProgress",
-    "replicationLocation",
-    "cname",
-    "bucketInfo",
-    "comp",
-    "qos",
-    "live",
-    "status",
-    "vod",
-    "startTime",
-    "endTime",
-    "symlink",
-    "x-oss-process",
-    "response-content-type",
-    "response-content-language",
-    "response-expires",
-    "response-cache-control",
-    "response-content-disposition",
-    "response-content-encoding",
-    "udf",
-    "udfName",
-    "udfImage",
-    "udfId",
-    "udfImageDesc",
-    "udfApplication",
-    "comp",
-    "udfApplicationLog",
-    "restore",
-    "callback",
-    "callback-var",
-];
-
 impl<'a> OSS<'a> {
     pub fn new<S>(key_id: S, key_secret: S, endpoint: S, bucket: S) -> Self
     where
@@ -160,10 +107,7 @@ impl<'a> OSS<'a> {
     where
         S: AsRef<str>,
     {
-        let mut resources: Vec<(&S, &Option<S>)> = params
-            .iter()
-            .filter(|(k, _)| RESOURCES.contains(&k.as_ref()))
-            .collect();
+        let mut resources: Vec<(&S, &Option<S>)> = params.iter().collect();
         resources.sort_by(|a, b| a.0.as_ref().to_string().cmp(&b.0.as_ref().to_string()));
         let mut result = String::new();
         for (k, v) in resources {
