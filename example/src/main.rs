@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use tokio::runtime::Runtime;
 
 fn main() {
-    get_object();
-    async_get_object();
+    // get_object();
+    // async_get_object();
+    list_object();
 }
 
 fn get_object() {
@@ -17,15 +18,22 @@ fn get_object() {
     println!("text = {:?}", String::from_utf8(result.unwrap()));
 }
 
-fn async_get_object() {
-    // use your own oss config
-    let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
+// fn async_get_object() {
+//     // use your own oss config
+//     let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
 
-    let mut rt = Runtime::new().expect("failed to start runtime");
+//     let mut rt = Runtime::new().expect("failed to start runtime");
 
-    rt.block_on(async move {
-        let buf = oss_instance.async_get_object("objectName", None, None).await.unwrap();
-        println!("buffer = {:?}", String::from_utf8(buf.to_vec()));
-    });
+//     rt.block_on(async move {
+//         let buf = oss_instance.async_get_object("objectName", None, None).await.unwrap();
+//         println!("buffer = {:?}", String::from_utf8(buf.to_vec()));
+//     });
+// }
+
+fn list_object() {
+
+    // let mut params = HashMap::new();
+    // params.insert("max-keys", Some("5"));
+    let result = oss_instance.list_object(None::<HashMap<&str, &str>>, None);
+    dbg!(result);
 }
-
