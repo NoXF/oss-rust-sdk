@@ -147,7 +147,7 @@ impl<'a> ServiceAPI for OSS<'a> {
         R: Into<Option<HashMap<S, Option<S>>>> + Send,
     {
         let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
+            self.get_resources_str(&r)
         } else {
             String::new()
         };
