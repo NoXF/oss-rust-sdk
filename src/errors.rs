@@ -1,3 +1,4 @@
+use quick_xml::DeError;
 use quick_xml::Error as QxmlError;
 use reqwest::header::InvalidHeaderName as HttpInvalidHeaderNameError;
 use reqwest::header::InvalidHeaderValue as HttpInvalidHeaderValueError;
@@ -14,6 +15,7 @@ pub enum Error {
     Reqwest(ReqwestError),
     Qxml(QxmlError),
     Http(HttpError),
+    DeserializeError(DeError),
 }
 
 #[derive(Debug, Display)]
@@ -58,6 +60,12 @@ impl From<FromUtf8Error> for Error {
     }
 }
 
+impl From<DeError> for Error {
+    fn from(value: DeError) -> Error {
+        Error::DeserializeError(value)
+    }
+}
+
 #[derive(Debug, Display)]
 pub enum ObjectError {
     #[display(fmt = "PUT ERROR: {}", msg)]
@@ -70,6 +78,8 @@ pub enum ObjectError {
     DeleteError { msg: String },
     #[display(fmt = "HEAD ERROR: {}", msg)]
     HeadError { msg: String },
+    #[display(fmt = "POST ERROR: {}", msg)]
+    PostError { msg: String },
 }
 
 impl StdError for Error {}
