@@ -246,6 +246,7 @@ impl<'a> OSS<'a> {
 pub enum RequestType {
     Get,
     Put,
+    Post,
     Delete,
     Head,
 }
@@ -255,6 +256,7 @@ impl RequestType {
         match self {
             RequestType::Get => "GET",
             RequestType::Put => "PUT",
+            RequestType::Post => "POST",
             RequestType::Delete => "DELETE",
             RequestType::Head => "HEAD",
         }
