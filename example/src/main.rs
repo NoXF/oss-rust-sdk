@@ -65,7 +65,7 @@ fn async_list_object() {
     rt.block_on(async move {
         let result = oss_instance.list_object(None, params).await.unwrap();
 
-        for object in result.objects() {
+        for object in result.contents() {
             dbg!(&object.key());
         }
     });
@@ -86,7 +86,7 @@ fn list_object() {
     params.insert("max-keys", Some("5"));
     let result = oss_instance.list_object(None, params).unwrap();
 
-    for object in result.objects() {
+    for object in result.contents() {
         dbg!(&object.key());
     }
 }

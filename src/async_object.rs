@@ -1,10 +1,9 @@
-use quick_xml::{events::Event, Reader};
 use std::collections::HashMap;
 
 use crate::{
     multi_part::{CompleteMultipartUploadResult, InitiateMultipartUploadResult},
     oss::{ObjectMeta, RequestType},
-    prelude::{ListObjects, Object, OSS},
+    prelude::{ListObjects, OSS},
 };
 
 use super::errors::{Error, ObjectError};
@@ -107,7 +106,6 @@ pub trait AsyncObjectAPI {
     ///
     /// # Examples
     ///
-    /// ```
     ///  #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
     ///  #[serde(rename_all = "PascalCase")]
     ///  pub struct PartWrapper {
@@ -129,7 +127,7 @@ pub trait AsyncObjectAPI {
     ///  };
     ///
     ///  let body = quick_xml::se::to_string_with_root("CompleteMultipartUpload", &parts).unwrap();
-    /// ```
+    ///
     async fn complete_multi<S1, S2, H, R>(
         &self,
         body: String,
@@ -169,88 +167,9 @@ impl<'a> AsyncObjectAPI for OSS<'a> {
             self.build_request(RequestType::Get, String::new(), headers, resources)?;
 
         let resp = self.http_client.get(host).headers(headers).send().await?;
+        let body = resp.text().await?;
+        let list_objects = quick_xml::de::from_str::<ListObjects>(&body)?;
 
-        let xml_str = resp.text().await?;
-        let mut result = Vec::new();
-        let mut reader = Reader::from_str(xml_str.as_str());
-        reader.trim_text(true);
-
-        let mut bucket_name = String::new();
-        let mut prefix = String::new();
-        let mut marker = String::new();
-        let mut max_keys = String::new();
-        let mut delimiter = String::new();
-        let mut is_truncated = false;
-
-        let mut key = String::new();
-        let mut last_modified = String::new();
-        let mut etag = String::new();
-        let mut r#type = String::new();
-        let mut size = 0usize;
-        let mut storage_class = String::new();
-        let mut owner_id = String::new();
-        let mut owner_display_name = String::new();
-
-        let list_objects;
-
-        loop {
-            match reader.read_event() {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"Name" => bucket_name = reader.read_text(e.name())?.to_string(),
-                    b"Prefix" => prefix = reader.read_text(e.name())?.to_string(),
-                    b"Marker" => marker = reader.read_text(e.name())?.to_string(),
-                    b"MaxKeys" => max_keys = reader.read_text(e.name())?.to_string(),
-                    b"Delimiter" => delimiter = reader.read_text(e.name())?.to_string(),
-                    b"IsTruncated" => {
-                        is_truncated = reader.read_text(e.name())?.to_string() == "true"
-                    }
-                    b"Contents" => {
-                        // do nothing
-                    }
-                    b"Key" => key = reader.read_text(e.name())?.to_string(),
-                    b"LastModified" => last_modified = reader.read_text(e.name())?.to_string(),
-                    b"ETag" => etag = reader.read_text(e.name())?.to_string(),
-                    b"Type" => r#type = reader.read_text(e.name())?.to_string(),
-                    b"Size" => size = reader.read_text(e.name())?.parse::<usize>().unwrap(),
-                    b"StorageClass" => storage_class = reader.read_text(e.name())?.to_string(),
-                    b"Owner" => {
-                        // do nothing
-                    }
-                    b"ID" => owner_id = reader.read_text(e.name())?.to_string(),
-                    b"DisplayName" => owner_display_name = reader.read_text(e.name())?.to_string(),
-
-                    _ => (),
-                },
-
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"Contents" => {
-                    let object = Object::new(
-                        key.clone(),
-                        last_modified.clone(),
-                        size,
-                        etag.clone(),
-                        r#type.clone(),
-                        storage_class.clone(),
-                        owner_id.clone(),
-                        owner_display_name.clone(),
-                    );
-                    result.push(object);
-                }
-                Ok(Event::Eof) => {
-                    list_objects = ListObjects::new(
-                        bucket_name,
-                        delimiter,
-                        prefix,
-                        marker,
-                        max_keys,
-                        is_truncated,
-                        result,
-                    );
-                    break;
-                } // exits the loop when reaching end of file
-                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
-                _ => (), // There are several other `Event`s we do not consider here
-            }
-        }
         Ok(list_objects)
     }
 

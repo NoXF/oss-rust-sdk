@@ -1,5 +1,6 @@
 use quick_xml::{events::Event, Reader};
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
 use crate::oss::RequestType;
 
@@ -7,43 +8,44 @@ use super::errors::{Error, ObjectError};
 use super::oss::OSS;
 use super::utils::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct ListObjects {
-    bucket_name: String,
+    name: String,
     delimiter: String,
     prefix: String,
     marker: String,
     max_keys: String,
     is_truncated: bool,
 
-    objects: Vec<Object>,
+    contents: Vec<Object>,
 }
 
 impl ListObjects {
     pub fn new(
-        bucket_name: String,
+        name: String,
         delimiter: String,
         prefix: String,
         marker: String,
         max_keys: String,
         is_truncated: bool,
 
-        objects: Vec<Object>,
+        contents: Vec<Object>,
     ) -> Self {
         ListObjects {
-            bucket_name,
+            name,
             delimiter,
             prefix,
             marker,
             max_keys,
             is_truncated,
 
-            objects,
+            contents,
         }
     }
 
-    pub fn bucket_name(&self) -> &str {
-        &self.bucket_name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn delimiter(&self) -> &str {
@@ -66,21 +68,31 @@ impl ListObjects {
         self.is_truncated
     }
 
-    pub fn objects(&self) -> &Vec<Object> {
-        &self.objects
+    pub fn contents(&self) -> &Vec<Object> {
+        &self.contents
     }
 }
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Owner {
+    #[serde(alias = "ID")]
+    pub id: String,
+    pub display_name: String,
+}
+
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Object {
     key: String,
     last_modified: String,
     size: usize,
-    etag: String,
+    e_tag: String,
     r#type: String,
     storage_class: String,
-    owner_id: String,
-    owner_display_name: String,
+    owner: Owner
 }
 
 impl Object {
@@ -89,21 +101,19 @@ impl Object {
         last_modified: String,
         size: usize,
 
-        etag: String,
+        e_tag: String,
         r#type: String,
         storage_class: String,
-        owner_id: String,
-        owner_display_name: String,
+        owner: Owner
     ) -> Self {
         Object {
             key,
             last_modified,
             size,
-            etag,
+            e_tag,
             r#type,
             storage_class,
-            owner_id,
-            owner_display_name,
+            owner
         }
     }
 
@@ -119,8 +129,8 @@ impl Object {
         self.size
     }
 
-    pub fn etag(&self) -> &str {
-        &self.etag
+    pub fn e_tag(&self) -> &str {
+        &self.e_tag
     }
 
     pub fn r#type(&self) -> &str {
@@ -131,12 +141,12 @@ impl Object {
         &self.storage_class
     }
 
-    pub fn owner_id(&self) -> &str {
-        &self.owner_id
+    pub fn id(&self) -> &str {
+        &self.owner.id
     }
 
-    pub fn owner_display_name(&self) -> &str {
-        &self.owner_display_name
+    pub fn display_name(&self) -> &str {
+        &self.owner.display_name
     }
 }
 
@@ -224,87 +234,9 @@ impl<'a> ObjectAPI for OSS<'a> {
             .headers(headers)
             .send()?;
 
-        let xml_str = resp.text()?;
-        let mut result = Vec::new();
-        let mut reader = Reader::from_str(xml_str.as_str());
-        reader.trim_text(true);
+        let body = resp.text()?;
+        let list_objects = quick_xml::de::from_str::<ListObjects>(&body)?;
 
-        let mut bucket_name = String::new();
-        let mut prefix = String::new();
-        let mut marker = String::new();
-        let mut max_keys = String::new();
-        let mut delimiter = String::new();
-        let mut is_truncated = false;
-
-        let mut key = String::new();
-        let mut last_modified = String::new();
-        let mut etag = String::new();
-        let mut r#type = String::new();
-        let mut size = 0usize;
-        let mut storage_class = String::new();
-        let mut owner_id = String::new();
-        let mut owner_display_name = String::new();
-
-        let list_objects;
-
-        loop {
-            match reader.read_event() {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"Name" => bucket_name = reader.read_text(e.name())?.to_string(),
-                    b"Prefix" => prefix = reader.read_text(e.name())?.to_string(),
-                    b"Marker" => marker = reader.read_text(e.name())?.to_string(),
-                    b"MaxKeys" => max_keys = reader.read_text(e.name())?.to_string(),
-                    b"Delimiter" => delimiter = reader.read_text(e.name())?.to_string(),
-                    b"IsTruncated" => {
-                        is_truncated = reader.read_text(e.name())?.to_string() == "true"
-                    }
-                    b"Contents" => {
-                        // do nothing
-                    }
-                    b"Key" => key = reader.read_text(e.name())?.to_string(),
-                    b"LastModified" => last_modified = reader.read_text(e.name())?.to_string(),
-                    b"ETag" => etag = reader.read_text(e.name())?.to_string(),
-                    b"Type" => r#type = reader.read_text(e.name())?.to_string(),
-                    b"Size" => size = reader.read_text(e.name())?.parse::<usize>().unwrap(),
-                    b"StorageClass" => storage_class = reader.read_text(e.name())?.to_string(),
-                    b"Owner" => {
-                        // do nothing
-                    }
-                    b"ID" => owner_id = reader.read_text(e.name())?.to_string(),
-                    b"DisplayName" => owner_display_name = reader.read_text(e.name())?.to_string(),
-
-                    _ => (),
-                },
-
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"Contents" => {
-                    let object = Object::new(
-                        key.clone(),
-                        last_modified.clone(),
-                        size,
-                        etag.clone(),
-                        r#type.clone(),
-                        storage_class.clone(),
-                        owner_id.clone(),
-                        owner_display_name.clone(),
-                    );
-                    result.push(object);
-                }
-                Ok(Event::Eof) => {
-                    list_objects = ListObjects::new(
-                        bucket_name,
-                        delimiter,
-                        prefix,
-                        marker,
-                        max_keys,
-                        is_truncated,
-                        result,
-                    );
-                    break;
-                } // exits the loop when reaching end of file
-                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
-                _ => (), // There are several other `Event`s we do not consider here
-            }
-        }
         Ok(list_objects)
     }
 
