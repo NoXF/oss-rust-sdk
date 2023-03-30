@@ -1,22 +1,30 @@
-use quick_xml::{events::Event, Reader};
 use reqwest::header::{HeaderMap, DATE};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use crate::prelude::Owner;
 
 use super::auth::*;
 use super::errors::Error;
 use super::oss::OSS;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct ListBuckets {
+    #[serde(default)]
     prefix: String,
+    #[serde(default)]
     marker: String,
+    #[serde(default)]
     max_keys: String,
+    #[serde(default)]
     is_truncated: bool,
+    #[serde(default)]
     next_marker: String,
 
-    id: String,
-    display_name: String,
+    owner: Owner,
 
+    #[serde(default)]
     buckets: Vec<Bucket>,
 }
 
@@ -27,8 +35,7 @@ impl ListBuckets {
         max_keys: String,
         is_truncated: bool,
         next_marker: String,
-        id: String,
-        display_name: String,
+        owner: Owner,
         buckets: Vec<Bucket>,
     ) -> Self {
         ListBuckets {
@@ -37,8 +44,7 @@ impl ListBuckets {
             max_keys,
             is_truncated,
             next_marker,
-            id,
-            display_name,
+            owner,
             buckets,
         }
     }
@@ -64,11 +70,11 @@ impl ListBuckets {
     }
 
     pub fn id(&self) -> &str {
-        &self.id
+        &self.owner.id
     }
 
     pub fn display_name(&self) -> &str {
-        &self.display_name
+        &self.owner.display_name
     }
 
     pub fn buckets(&self) -> &Vec<Bucket> {
@@ -76,20 +82,27 @@ impl ListBuckets {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Bucket {
+    #[serde(default)]
     name: String,
-    create_date: String,
+    #[serde(default)]
+    creation_date: String,
+    #[serde(default)]
     location: String,
+    #[serde(default)]
     extranet_endpoint: String,
+    #[serde(default)]
     intranet_endpoint: String,
+    #[serde(default)]
     storage_class: String,
 }
 
 impl Bucket {
     pub fn new(
         name: String,
-        create_date: String,
+        creation_date: String,
         location: String,
         extranet_endpoint: String,
         intranet_endpoint: String,
@@ -97,7 +110,7 @@ impl Bucket {
     ) -> Self {
         Bucket {
             name,
-            create_date,
+            creation_date,
             location,
             extranet_endpoint,
             intranet_endpoint,
@@ -109,8 +122,8 @@ impl Bucket {
         &self.name
     }
 
-    pub fn create_data(&self) -> &str {
-        &self.create_date
+    pub fn creation_date(&self) -> &str {
+        &self.creation_date
     }
 
     pub fn location(&self) -> &str {
@@ -169,90 +182,9 @@ impl<'a> ServiceAPI for OSS<'a> {
             .headers(headers)
             .send()?;
 
-        let xml_str = resp.text()?;
-        let mut result = Vec::new();
-        let mut reader = Reader::from_str(xml_str.as_str());
-        reader.trim_text(true);
+        let body = resp.text()?;
+        let list_buckets = quick_xml::de::from_str::<ListBuckets>(&body)?;
 
-        let mut prefix = String::new();
-        let mut marker = String::new();
-        let mut max_keys = String::new();
-        let mut is_truncated = false;
-        let mut next_marker = String::new();
-        let mut id = String::new();
-        let mut display_name = String::new();
-
-        let mut name = String::new();
-        let mut location = String::new();
-        let mut create_date = String::new();
-        let mut extranet_endpoint = String::new();
-        let mut intranet_endpoint = String::new();
-        let mut storage_class = String::new();
-
-        let list_buckets;
-
-        loop {
-            match reader.read_event() {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"Prefix" => prefix = reader.read_text(e.name())?.to_string(),
-                    b"Marker" => marker = reader.read_text(e.name())?.to_string(),
-                    b"MaxKeys" => max_keys = reader.read_text(e.name())?.to_string(),
-                    b"IsTruncated" => {
-                        is_truncated = reader.read_text(e.name())?.to_string() == "true"
-                    }
-                    b"NextMarker" => next_marker = reader.read_text(e.name())?.to_string(),
-                    b"ID" => id = reader.read_text(e.name())?.to_string(),
-                    b"DisplayName" => display_name = reader.read_text(e.name())?.to_string(),
-
-                    b"Bucket" => {
-                        name = String::new();
-                        location = String::new();
-                        create_date = String::new();
-                        extranet_endpoint = String::new();
-                        intranet_endpoint = String::new();
-                        storage_class = String::new();
-                    }
-
-                    b"Name" => name = reader.read_text(e.name())?.to_string(),
-                    b"CreationDate" => create_date = reader.read_text(e.name())?.to_string(),
-                    b"ExtranetEndpoint" => {
-                        extranet_endpoint = reader.read_text(e.name())?.to_string()
-                    }
-                    b"IntranetEndpoint" => {
-                        intranet_endpoint = reader.read_text(e.name())?.to_string()
-                    }
-                    b"Location" => location = reader.read_text(e.name())?.to_string(),
-                    b"StorageClass" => storage_class = reader.read_text(e.name())?.to_string(),
-                    _ => (),
-                },
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"Bucket" => {
-                    let bucket = Bucket::new(
-                        name.clone(),
-                        create_date.clone(),
-                        location.clone(),
-                        extranet_endpoint.clone(),
-                        intranet_endpoint.clone(),
-                        storage_class.clone(),
-                    );
-                    result.push(bucket);
-                }
-                Ok(Event::Eof) => {
-                    list_buckets = ListBuckets::new(
-                        prefix,
-                        marker,
-                        max_keys,
-                        is_truncated,
-                        next_marker,
-                        id,
-                        display_name,
-                        result,
-                    );
-                    break;
-                } // exits the loop when reaching end of file
-                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
-                _ => (), // There are several other `Event`s we do not consider here
-            }
-        }
         Ok(list_buckets)
     }
 }

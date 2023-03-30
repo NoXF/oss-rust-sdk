@@ -18,6 +18,7 @@ pub struct ListObjects {
     max_keys: String,
     is_truncated: bool,
 
+    #[serde(default)]
     contents: Vec<Object>,
 }
 
@@ -74,7 +75,7 @@ impl ListObjects {
 }
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct Owner {
     #[serde(alias = "ID")]
