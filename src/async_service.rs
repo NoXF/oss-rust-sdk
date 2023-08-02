@@ -11,7 +11,7 @@ use super::oss::OSS;
 #[derive(Clone, Debug)]
 pub struct Bucket {
     name: String,
-    create_date: String,
+    creation_date: String,
     location: String,
     extranet_endpoint: String,
     intranet_endpoint: String,
@@ -21,7 +21,7 @@ pub struct Bucket {
 impl Bucket {
     pub fn new(
         name: String,
-        create_date: String,
+        creation_date: String,
         location: String,
         extranet_endpoint: String,
         intranet_endpoint: String,
@@ -29,7 +29,7 @@ impl Bucket {
     ) -> Self {
         Bucket {
             name,
-            create_date,
+            creation_date,
             location,
             extranet_endpoint,
             intranet_endpoint,
@@ -41,8 +41,8 @@ impl Bucket {
         &self.name
     }
 
-    pub fn create_data(&self) -> &str {
-        &self.create_date
+    pub fn creation_date(&self) -> &str {
+        &self.creation_date
     }
 
     pub fn location(&self) -> &str {
