@@ -82,6 +82,10 @@ impl ListObjects {
     pub fn contents(&self) -> &Vec<Object> {
         &self.contents
     }
+
+    pub fn common_prefixes(&self) -> &Vec<CommonPrefix> {
+      &self.common_prefixes
+    }
 }
 
 
