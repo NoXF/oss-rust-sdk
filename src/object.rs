@@ -14,6 +14,16 @@ pub struct CommonPrefix {
     prefix: String,
 }
 
+impl CommonPrefix {
+    pub fn new(prefix: String) -> Self {
+        Self { prefix }
+    }
+
+    pub fn prefix(&self) -> &str {
+        &self.prefix
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ListObjects {
@@ -84,7 +94,7 @@ impl ListObjects {
     }
 
     pub fn common_prefixes(&self) -> &Vec<CommonPrefix> {
-      &self.common_prefixes
+        &self.common_prefixes
     }
 }
 
