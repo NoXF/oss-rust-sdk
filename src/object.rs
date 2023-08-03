@@ -10,6 +10,12 @@ use super::utils::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
+pub struct CommonPrefix {
+    prefix: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct ListObjects {
     name: String,
     delimiter: String,
@@ -20,6 +26,8 @@ pub struct ListObjects {
 
     #[serde(default)]
     contents: Vec<Object>,
+    #[serde(default)]
+    common_prefixes: Vec<CommonPrefix>,
 }
 
 impl ListObjects {
@@ -32,6 +40,7 @@ impl ListObjects {
         is_truncated: bool,
 
         contents: Vec<Object>,
+        common_prefixes: Vec<CommonPrefix>,
     ) -> Self {
         ListObjects {
             name,
@@ -42,6 +51,7 @@ impl ListObjects {
             is_truncated,
 
             contents,
+            common_prefixes
         }
     }
 
