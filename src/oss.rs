@@ -252,7 +252,7 @@ pub enum RequestType {
 }
 
 impl RequestType {
-    fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         match self {
             RequestType::Get => "GET",
             RequestType::Put => "PUT",

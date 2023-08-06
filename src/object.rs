@@ -1,7 +1,9 @@
 use quick_xml::{events::Event, Reader};
-use std::collections::HashMap;
+use reqwest::header::{HeaderMap, HeaderValue, DATE};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
+use crate::auth::Auth;
 use crate::oss::RequestType;
 
 use super::errors::{Error, ObjectError};
@@ -225,6 +227,10 @@ pub trait ObjectAPI {
         H: Into<Option<HashMap<S2, S2>>>,
         R: Into<Option<HashMap<S2, Option<S2>>>>;
 
+    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send;
+
     fn copy_object_from_object<S1, S2, S3, H, R>(
         &self,
         src: S1,
@@ -320,6 +326,32 @@ impl<'a> ObjectAPI for OSS<'a> {
         }
 
         Ok(grant)
+    }
+
+    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send,
+    {
+        let object_name = object_name.as_ref();
+        let mut headers = HeaderMap::new();
+        headers.insert(DATE, HeaderValue::from_str(&expires.to_string()).unwrap());
+        let signature = self.sign(
+            RequestType::Get.as_str(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            "",
+            &headers,
+        );
+        format!(
+            "https://{}.{}/{}?Expires={}&OSSAccessKeyId={}&Signature={}",
+            self.bucket(),
+            self.endpoint(),
+            urlencoding::encode(object_name),
+            expires,
+            urlencoding::encode(self.key_id()),
+            urlencoding::encode(&signature)
+        )
     }
 
     fn put_object_from_file<S1, S2, S3, H, R>(
