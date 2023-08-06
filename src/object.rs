@@ -227,6 +227,10 @@ pub trait ObjectAPI {
         H: Into<Option<HashMap<S2, S2>>>,
         R: Into<Option<HashMap<S2, Option<S2>>>>;
 
+    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send;
+
     fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
     where
         S1: AsRef<str> + Send;
@@ -328,7 +332,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         Ok(grant)
     }
 
-    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
     where
         S1: AsRef<str> + Send,
     {
@@ -344,13 +348,23 @@ impl<'a> ObjectAPI for OSS<'a> {
             &headers,
         );
         format!(
-            "https://{}.{}/{}?Expires={}&OSSAccessKeyId={}&Signature={}",
-            self.bucket(),
-            self.endpoint(),
+            "/{}?Expires={}&OSSAccessKeyId={}&Signature={}",
             urlencoding::encode(object_name),
             expires,
             urlencoding::encode(self.key_id()),
             urlencoding::encode(&signature)
+        )
+    }
+
+    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send,
+    {
+        format!(
+            "https://{}.{}{}",
+            self.bucket(),
+            self.endpoint(),
+            self.generate_presigned_path(object_name, expires),
         )
     }
 
