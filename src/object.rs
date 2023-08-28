@@ -63,7 +63,7 @@ impl ListObjects {
             is_truncated,
 
             contents,
-            common_prefixes
+            common_prefixes,
         }
     }
 
@@ -100,7 +100,6 @@ impl ListObjects {
     }
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct Owner {
@@ -108,7 +107,6 @@ pub struct Owner {
     pub id: String,
     pub display_name: String,
 }
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -119,7 +117,7 @@ pub struct Object {
     e_tag: String,
     r#type: String,
     storage_class: String,
-    owner: Owner
+    owner: Owner,
 }
 
 impl Object {
@@ -131,7 +129,7 @@ impl Object {
         e_tag: String,
         r#type: String,
         storage_class: String,
-        owner: Owner
+        owner: Owner,
     ) -> Self {
         Object {
             key,
@@ -140,7 +138,7 @@ impl Object {
             e_tag,
             r#type,
             storage_class,
-            owner
+            owner,
         }
     }
 
@@ -175,6 +173,12 @@ impl Object {
     pub fn display_name(&self) -> &str {
         &self.owner.display_name
     }
+}
+
+trait PrivateObjectAPI {
+    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send;
 }
 
 pub trait ObjectAPI {
@@ -227,11 +231,7 @@ pub trait ObjectAPI {
         H: Into<Option<HashMap<S2, S2>>>,
         R: Into<Option<HashMap<S2, Option<S2>>>>;
 
-    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
-    where
-        S1: AsRef<str> + Send;
-
-    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    fn get_object_signed_url<S1>(&self, object_name: S1, expires: usize) -> String
     where
         S1: AsRef<str> + Send;
 
@@ -252,6 +252,32 @@ pub trait ObjectAPI {
     fn delete_object<S>(&self, object_name: S) -> Result<(), Error>
     where
         S: AsRef<str>;
+}
+
+impl<'a> PrivateObjectAPI for OSS<'a> {
+    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
+    where
+        S1: AsRef<str> + Send,
+    {
+        let object_name = object_name.as_ref();
+        let mut headers = HeaderMap::new();
+        headers.insert(DATE, HeaderValue::from_str(&expires.to_string()).unwrap());
+        let signature = self.sign(
+            RequestType::Get.as_str(),
+            self.key_secret(),
+            self.bucket(),
+            object_name,
+            "",
+            &headers,
+        );
+        format!(
+            "/{}?Expires={}&OSSAccessKeyId={}&Signature={}",
+            urlencoding::encode(object_name),
+            expires,
+            urlencoding::encode(self.key_id()),
+            urlencoding::encode(&signature)
+        )
+    }
 }
 
 impl<'a> ObjectAPI for OSS<'a> {
@@ -332,31 +358,7 @@ impl<'a> ObjectAPI for OSS<'a> {
         Ok(grant)
     }
 
-    fn generate_presigned_path<S1>(&self, object_name: S1, expires: usize) -> String
-    where
-        S1: AsRef<str> + Send,
-    {
-        let object_name = object_name.as_ref();
-        let mut headers = HeaderMap::new();
-        headers.insert(DATE, HeaderValue::from_str(&expires.to_string()).unwrap());
-        let signature = self.sign(
-            RequestType::Get.as_str(),
-            self.key_secret(),
-            self.bucket(),
-            object_name,
-            "",
-            &headers,
-        );
-        format!(
-            "/{}?Expires={}&OSSAccessKeyId={}&Signature={}",
-            urlencoding::encode(object_name),
-            expires,
-            urlencoding::encode(self.key_id()),
-            urlencoding::encode(&signature)
-        )
-    }
-
-    fn generate_presigned_url<S1>(&self, object_name: S1, expires: usize) -> String
+    fn get_object_signed_url<S1>(&self, object_name: S1, expires: usize) -> String
     where
         S1: AsRef<str> + Send,
     {
